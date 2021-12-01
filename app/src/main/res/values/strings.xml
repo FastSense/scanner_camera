@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Hello Kitty</string>
     <string name="hello_world">Hello Kitty!</string>
+    <string name="server_ip_address">192.168.25.250</string>
 </resources>
