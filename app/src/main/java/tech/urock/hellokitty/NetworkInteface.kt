@@ -1,13 +1,7 @@
 package tech.urock.hellokitty
 
 import android.content.Context
-import android.graphics.Color
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.widget.TextView
-import android.widget.ImageButton
-import android.widget.Button
-import android.os.CountDownTimer
+
 
 import com.android.volley.toolbox.Volley
 import com.android.volley.Request
