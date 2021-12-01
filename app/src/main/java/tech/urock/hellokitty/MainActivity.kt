@@ -25,7 +25,11 @@ class MainActivity : AppCompatActivity() {
         val imageButton: ImageButton = findViewById(R.id.imageButton)
         val button : Button = findViewById(R.id.button)
 
-        netIff = NetworkInterface(this, getString(R.string.server_ip_address) )
+        netIff = NetworkInterface(this,
+                                    getString(R.string.server_ip_address),
+                                    getString(R.string.port),
+                                    getString(R.string.phone_name),
+                                    getString(R.string.cam_pose))
         netIff.init()
 
         countDownTimer = object : CountDownTimer(500000, 5000) {

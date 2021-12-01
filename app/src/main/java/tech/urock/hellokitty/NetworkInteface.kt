@@ -18,18 +18,22 @@ import org.json.JSONObject
 //import com.android.volley.toolbox.JsonObjectRequest
 //import com.android.volley.toolbox.JsonArrayRequest
 
-class NetworkInterface (var context: Context, var server_ip: String)
+class NetworkInterface (context: Context, server_ip: String, port: String,
+                        phone_name: String, cam_pose: String)
+
 {
     private val queue = Volley.newRequestQueue(context)
-    private val urlBase: String  = "http://${server_ip}:5000"
+    private val urlBase: String  = "http://${server_ip}:${port}"
     private var pingPayload: JSONObject? = null
     private var pingRequest: JsonObjectRequest? = null
+    private val phone_name = phone_name
+    private val cam_pose = cam_pose
 
     fun init() {
 
         val pingPayloadMap = HashMap<String, String>()
-        pingPayloadMap["name"] = "urock-awesome-phone"
-        pingPayloadMap["cameraPosition"] = "right"
+        pingPayloadMap["name"] = phone_name
+        pingPayloadMap["cameraPosition"] = cam_pose
 
         pingPayload = JSONObject(pingPayloadMap as Map<String, String>?)
 
