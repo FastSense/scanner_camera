@@ -13,6 +13,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textView: TextView
     private var counter: Int = 0
 
+    val countDownTimer: CountDownTimer = object : CountDownTimer(5000, 1000) {
+        override fun onTick(millisUntilFinished: Long) {
+            textView.text = "Я насчитал ${++counter} ворон"
+        }
+        override fun onFinish() {
+            this.start(); //start again the CountDownTimer
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -24,8 +33,7 @@ class MainActivity : AppCompatActivity() {
 
 
         imageButton.setOnClickListener {
-            textView.setText("Image Button Pressed")
-            println("Image Button Pressed")
+            countDownTimer.cancel()
         }
 
         button.setOnClickListener {
@@ -34,13 +42,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun startTimeCounter() {
-        object : CountDownTimer(5000, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                textView.text = "Я насчитал ${++counter} ворон"
-            }
-            override fun onFinish() {
-                this.start(); //start again the CountDownTimer
-            }
-        }.start()
+        countDownTimer.start()
     }
 }
