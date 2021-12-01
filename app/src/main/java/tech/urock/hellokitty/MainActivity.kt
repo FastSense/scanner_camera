@@ -18,20 +18,37 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        setupViews()
+        setupNetwork()
+        setupTimer()
+    }
+
+    fun setupViews() {
         setContentView(R.layout.activity_main)
-
         textView = findViewById(R.id.textView)
-
         val imageButton: ImageButton = findViewById(R.id.imageButton)
         val button : Button = findViewById(R.id.button)
 
-        netIff = NetworkInterface(this,
-                                    getString(R.string.server_ip_address),
-                                    getString(R.string.port),
-                                    getString(R.string.phone_name),
-                                    getString(R.string.cam_pose))
-        netIff.init()
+        imageButton.setOnClickListener {
+            countDownTimer.cancel()
+        }
 
+        button.setOnClickListener {
+            countDownTimer.start()
+        }
+    }
+
+    fun setupNetwork() {
+        netIff = NetworkInterface(this,
+                                getString(R.string.server_ip_address),
+                                getString(R.string.port),
+                                getString(R.string.phone_name),
+                                getString(R.string.cam_pose))
+        netIff.init()
+    }
+
+    fun setupTimer() {
         countDownTimer = object : CountDownTimer(500000, 5000) {
             override fun onTick(millisUntilFinished: Long) {
                 textView.text = "Я насчитал ${++counter} ворон"
@@ -41,14 +58,6 @@ class MainActivity : AppCompatActivity() {
             override fun onFinish() {
                 this.start(); //start again the CountDownTimer
             }
-        }
-
-        imageButton.setOnClickListener {
-            countDownTimer.cancel()
-        }
-
-        button.setOnClickListener {
-            countDownTimer.start()
         }
     }
 }
