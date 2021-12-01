@@ -11,6 +11,7 @@ import com.android.volley.toolbox.JsonObjectRequest
 import org.json.JSONException
 import org.json.JSONObject
 
+
 //import com.android.volley.AuthFailureError
 //import com.android.volley.toolbox.StringRequest
 //import com.android.volley.VolleyError
@@ -25,12 +26,12 @@ class NetworkInterface (var context: Context, var server_ip: String)
     private var pingRequest: JsonObjectRequest? = null
 
     fun init() {
-        try {
-            pingPayload =
-                JSONObject("{\"name\": \"urock-awesome-phone\", \"cameraPosition\": \"right\"}")
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
+
+        val pingPayloadMap = HashMap<String, String>()
+        pingPayloadMap["name"] = "urock-awesome-phone"
+        pingPayloadMap["cameraPosition"] = "right"
+
+        pingPayload = JSONObject(pingPayloadMap as Map<String, String>?)
 
         pingRequest = JsonObjectRequest(
             Request.Method.POST,
