@@ -1,7 +1,9 @@
 <resources>
     <string name="app_name">Camera Control App</string>
-    <string name="server_ip_address">192.168.25.250</string>
-    <string name="port">5000</string>
+<!--    <string name="server_ip_address">192.168.25.250</string>-->
+    <string name="server_ip_address">192.168.194.242</string>
+    <string name="http_port">5000</string>
+    <string name="s_port">9009</string>
     <string name="phone_name">urock_phone</string>
     <string name="cam_pose">right</string>
 </resources>

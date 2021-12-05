@@ -35,14 +35,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         button.setOnClickListener {
-            countDownTimer.start()
+//            countDownTimer.start()
+            netIff.sendMsg()
         }
     }
 
     fun setupNetwork() {
         netIff = NetworkInterface(this,
                                 getString(R.string.server_ip_address),
-                                getString(R.string.port),
+                                getString(R.string.http_port),
+                                getString(R.string.s_port),
                                 getString(R.string.phone_name),
                                 getString(R.string.cam_pose))
         netIff.init()
@@ -60,4 +62,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+
 }
+

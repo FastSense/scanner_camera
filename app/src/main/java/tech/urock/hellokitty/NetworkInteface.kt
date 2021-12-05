@@ -18,22 +18,32 @@ import org.json.JSONObject
 //import com.android.volley.toolbox.JsonObjectRequest
 //import com.android.volley.toolbox.JsonArrayRequest
 
-class NetworkInterface (context: Context, server_ip: String, port: String,
+import io.socket.client.IO
+import io.socket.client.Socket
+import io.socket.emitter.Emitter;
+import java.net.URISyntaxException
+
+class NetworkInterface (context: Context, server_ip: String, http_port: String, s_port: String,
                         phone_name: String, cam_pose: String)
 
 {
     private val queue = Volley.newRequestQueue(context)
-    private val urlBase: String  = "http://${server_ip}:${port}"
+    private val serverIp: String = server_ip
+    private val urlBase: String  = "http://${serverIp}:${http_port}"
+    private val socketPort: String = s_port
     private var pingPayload: JSONObject? = null
     private var pingRequest: JsonObjectRequest? = null
-    private val phone_name = phone_name
-    private val cam_pose = cam_pose
+    private val phoneName = phone_name
+    private val camPose = cam_pose
+
+    private var mSocket: Socket? = null
+
 
     fun init() {
 
         val pingPayloadMap = HashMap<String, String>()
-        pingPayloadMap["name"] = phone_name
-        pingPayloadMap["cameraPosition"] = cam_pose
+        pingPayloadMap["name"] = phoneName
+        pingPayloadMap["cameraPosition"] = camPose
 
         pingPayload = JSONObject(pingPayloadMap as Map<String, String>?)
 
@@ -45,9 +55,33 @@ class NetworkInterface (context: Context, server_ip: String, port: String,
                 println("Ping response: $response")
             }) { obj: VolleyError -> obj.printStackTrace() }
 
+
+        connectToSocketServer()
+
     }
 
     fun postPingRequest() {
         queue.add(pingRequest)
     }
+
+    fun connectToSocketServer() {
+        try {
+            mSocket = IO.socket("http://${serverIp}:${socketPort}")
+        } catch (e: URISyntaxException) {
+            println("URISyntaxException")
+        }
+
+        mSocket?.connect()
+
+        mSocket?.emit("name", phoneName);
+    }
+
+    fun sendMsg() {
+        val msg_map = HashMap<String, String>()
+        msg_map["msg"] = "Hello from Android"
+        var msg_json: JSONObject = JSONObject(msg_map as Map<String, String>?)
+
+        mSocket?.emit("msg", msg_json);
+    }
+
 }
