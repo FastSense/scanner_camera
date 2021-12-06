@@ -19,12 +19,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var netIff: NetworkInterface
     private lateinit var videoConfig: SharedPreferences
 
+    private lateinit var video_cc: VideoConfig
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setupViews()
         setupNetwork()
         setupTimer()
+
+        video_cc = VideoConfig()
+
 
 //        videoConfig = getSharedPreferences("settings", Context.MODE_PRIVATE)
 //
