@@ -1,5 +1,6 @@
 package tech.urock.hellokitty
 
+import java.util.*
 import android.content.Context
 
 
@@ -27,7 +28,7 @@ class NetworkInterface (context: Context, server_ip: String, http_port: String, 
                         phone_name: String, cam_pose: String)
 
 {
-    private val queue = Volley.newRequestQueue(context)
+    private val volleyRequestQueue = Volley.newRequestQueue(context)
     private val serverIp: String = server_ip
     private val urlBase: String  = "http://${serverIp}:${http_port}"
     private val socketPort: String = s_port
@@ -37,6 +38,8 @@ class NetworkInterface (context: Context, server_ip: String, http_port: String, 
     private val camPose = cam_pose
 
     private var mSocket: Socket? = null
+
+    private var onNewMessage: Emitter.Listener? = null
 
 
     fun init() {
@@ -61,7 +64,7 @@ class NetworkInterface (context: Context, server_ip: String, http_port: String, 
     }
 
     fun postPingRequest() {
-        queue.add(pingRequest)
+        volleyRequestQueue.add(pingRequest)
     }
 
     fun connectToSocketServer() {
@@ -71,9 +74,26 @@ class NetworkInterface (context: Context, server_ip: String, http_port: String, 
             println("URISyntaxException")
         }
 
+        onNewMessage = Emitter.Listener { args ->
+            val data = args[0] as JSONObject
+            val username: String
+            val message: String
+            try {
+                username = data.getString("from")
+                message = data.getString("msg")
+            } catch (e: JSONException) {
+                return@Listener
+            }
+
+            // add the message to view
+            println("${username}: ${message}")
+        }
+
+        mSocket?.on("msg", onNewMessage);
         mSocket?.connect()
 
         mSocket?.emit("name", phoneName);
+
     }
 
     fun sendMsg() {
