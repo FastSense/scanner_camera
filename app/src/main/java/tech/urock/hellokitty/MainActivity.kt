@@ -1,5 +1,7 @@
 package tech.urock.hellokitty
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -13,8 +15,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var textView: TextView
     private var counter: Int = 0
-    private lateinit var countDownTimer: CountDownTimer
+    private lateinit var pingTimer: CountDownTimer
     private lateinit var netIff: NetworkInterface
+    private lateinit var videoConfig: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,6 +25,17 @@ class MainActivity : AppCompatActivity() {
         setupViews()
         setupNetwork()
         setupTimer()
+
+//        videoConfig = getSharedPreferences("settings", Context.MODE_PRIVATE)
+//
+//        // Запоминаем данные
+//        val editor = videoConfig.edit()
+//        editor.putInt("fullResolution", 0).apply()
+//        editor.putInt("iso", 1000).apply()
+//        editor.putInt("exposure", 640).apply()
+//        editor.putInt("preview_fps", 10).apply()
+//        editor.putInt("preview_width", 216).apply()
+//        editor.putInt("preview_height", 384).apply()
     }
 
     fun setupViews() {
@@ -31,19 +45,20 @@ class MainActivity : AppCompatActivity() {
         val button : Button = findViewById(R.id.button)
 
         imageButton.setOnClickListener {
-            countDownTimer.cancel()
+            pingTimer.cancel()
+            netIff.sendStatus()
         }
 
         button.setOnClickListener {
-//            countDownTimer.start()
-            netIff.sendMsg()
+            pingTimer.start()
         }
     }
 
     fun setupNetwork() {
         netIff = NetworkInterface(this,
-                                getString(R.string.server_ip_address),
+                                getString(R.string.http_server_ip),
                                 getString(R.string.http_port),
+                                getString(R.string.socket_server_ip),
                                 getString(R.string.s_port),
                                 getString(R.string.phone_name),
                                 getString(R.string.cam_pose))
@@ -51,7 +66,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun setupTimer() {
-        countDownTimer = object : CountDownTimer(500000, 5000) {
+        pingTimer = object : CountDownTimer(500000, 5000) {
             override fun onTick(millisUntilFinished: Long) {
                 textView.text = "Я насчитал ${++counter} ворон"
                 netIff.postPingRequest()
