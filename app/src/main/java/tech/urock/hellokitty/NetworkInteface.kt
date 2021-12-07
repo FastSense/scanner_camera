@@ -82,6 +82,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
         onConfig = Emitter.Listener { args ->
             val data = args[0] as JSONObject
             videoConfig.fromJson(data)
+//            videoConfig.toSharedPref()
         }
 
         mSocket?.on("config", onConfig);

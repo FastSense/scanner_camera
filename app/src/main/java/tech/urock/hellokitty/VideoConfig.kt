@@ -10,13 +10,27 @@ class VideoConfig (context: Context) {
     var fullResolution: Int = 1 // 0 - fullhd, 1 - 4k
     var iso: Int = 1500
     var exposure: Int = 640
-    var preview_fps: Int = 13
+    var preview_fps: Int = 10
     var preview_quality: Int = 30
     var preview_width: Int = 216
     var preview_height: Int = 384
     
     var context: Context = context
-    private lateinit var sharedPref: SharedPreferences
+//    private lateinit var sharedPref: SharedPreferences
+//    init {
+//        sharedPref = context.getSharedPreferences("videoConfig", Context.MODE_PRIVATE)
+//
+////        if(sharedPref.contains("fullResolution")){
+////
+////            fullResolution = sharedPref.getInt("fullResolution", 1)
+////            iso = sharedPref.getInt("iso", 1500)
+////            exposure = sharedPref.getInt("exposure", 640)
+////            preview_fps = sharedPref.getInt("preview_fps", 10)
+////            preview_quality = sharedPref.getInt("preview_quality", 30)
+////            preview_width = sharedPref.getInt("preview_width", 216)
+////            preview_height = sharedPref.getInt("preview_height", 384)
+////        }
+//    }
 
     fun print() {
         println("fullResolution = ${fullResolution}")
@@ -81,19 +95,17 @@ class VideoConfig (context: Context) {
         print()
     }
 
-    fun toSharedPref() {
-
-        sharedPref = context.getSharedPreferences("videoConfig", Context.MODE_PRIVATE)
+//    fun toSharedPref() {
 //
-//        // Запоминаем данные
-//        val editor = videoConfig.edit()
-//        editor.putInt("fullResolution", 0).apply()
-//        editor.putInt("iso", 1000).apply()
-//        editor.putInt("exposure", 640).apply()
-//        editor.putInt("preview_fps", 10).apply()
-//        editor.putInt("preview_width", 216).apply()
-//        editor.putInt("preview_height", 384).apply()
-    }
+//        val editor = sharedPref.edit()
+//        editor.putInt("fullResolution", fullResolution).apply()
+//        editor.putInt("iso", iso).apply()
+//        editor.putInt("exposure", exposure).apply()
+//        editor.putInt("preview_fps", preview_fps).apply()
+//        editor.putInt("preview_quality", preview_quality).apply()
+//        editor.putInt("preview_width", preview_width).apply()
+//        editor.putInt("preview_height", preview_height).apply()
+//    }
 
 }
 

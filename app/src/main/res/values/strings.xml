@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Camera Control App</string>
 <!--    <string name="server_ip_address">192.168.25.250</string>-->
-    <string name="http_server_ip">192.168.118.100</string>
-    <string name="socket_server_ip">192.168.118.240</string>
+    <string name="http_server_ip">192.168.118.90</string>
+    <string name="socket_server_ip">192.168.118.62</string>
 
     <string name="http_port">5000</string>
     <string name="s_port">9999</string>
