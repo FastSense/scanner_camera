@@ -17,30 +17,16 @@ class MainActivity : AppCompatActivity() {
     private var counter: Int = 0
     private lateinit var pingTimer: CountDownTimer
     private lateinit var netIff: NetworkInterface
-    private lateinit var videoConfig: SharedPreferences
 
-    private lateinit var video_cc: VideoConfig
+    private var videoConfig: VideoConfig = VideoConfig(this)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setupViews()
-        setupNetwork()
         setupTimer()
-
-        video_cc = VideoConfig()
-
-
-//        videoConfig = getSharedPreferences("settings", Context.MODE_PRIVATE)
-//
-//        // Запоминаем данные
-//        val editor = videoConfig.edit()
-//        editor.putInt("fullResolution", 0).apply()
-//        editor.putInt("iso", 1000).apply()
-//        editor.putInt("exposure", 640).apply()
-//        editor.putInt("preview_fps", 10).apply()
-//        editor.putInt("preview_width", 216).apply()
-//        editor.putInt("preview_height", 384).apply()
+        setupNetwork()
     }
 
     fun setupViews() {
@@ -51,22 +37,22 @@ class MainActivity : AppCompatActivity() {
 
         imageButton.setOnClickListener {
             pingTimer.cancel()
-            netIff.sendStatus()
         }
 
         button.setOnClickListener {
-            pingTimer.start()
+            netIff.sendStatus()
         }
     }
 
     fun setupNetwork() {
+        pingTimer.start()
         netIff = NetworkInterface(this,
                                 getString(R.string.http_server_ip),
                                 getString(R.string.http_port),
                                 getString(R.string.socket_server_ip),
                                 getString(R.string.s_port),
                                 getString(R.string.phone_name),
-                                getString(R.string.cam_pose))
+                                getString(R.string.cam_pose), videoConfig)
         netIff.init()
     }
 
@@ -75,7 +61,6 @@ class MainActivity : AppCompatActivity() {
             override fun onTick(millisUntilFinished: Long) {
                 textView.text = "Я насчитал ${++counter} ворон"
                 netIff.postPingRequest()
-
             }
             override fun onFinish() {
                 this.start(); //start again the CountDownTimer

@@ -26,7 +26,7 @@ import java.net.URISyntaxException
 
 class NetworkInterface (context: Context, http_server_ip: String, http_port: String,
                         socket_server_ip: String, s_port: String,
-                        phone_name: String, cam_pose: String)
+                        phone_name: String, cam_pose: String, video_config: VideoConfig)
 
 {
     private val volleyRequestQueue = Volley.newRequestQueue(context)
@@ -43,7 +43,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 
     private var onConfig: Emitter.Listener? = null
 
-    private var videoConfig: VideoConfig = VideoConfig()
+    private var videoConfig: VideoConfig = video_config
 
 
     fun init() {
@@ -81,17 +81,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 
         onConfig = Emitter.Listener { args ->
             val data = args[0] as JSONObject
-//            val username: String
-//            val message: String
-//            try {
-//                username = data.getString("from")
-//                message = data.getString("msg")
-//            } catch (e: JSONException) {
-//                return@Listener
-//            }
-
-            // add the message to view
-            println("${data}")
+            videoConfig.fromJson(data)
         }
 
         mSocket?.on("config", onConfig);
@@ -106,6 +96,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 
         mSocket?.emit("msg", msg_json);
     }
+
 
     fun sendStatus() {
         val status_map = HashMap<String, Any>()
