@@ -29,7 +29,21 @@ class Camera(context: Context) {
     private var context: Context = context
 
     fun setup() {
+        // Request camera permissions
+        if (allPermissionsGranted()) {
+            startCamera()
+        } else {
+            ActivityCompat.requestPermissions(
+                (context as MainActivity), REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
+            )
+        }
 
+//        // Set up the listener for take photo button
+//        camera_capture_button.setOnClickListener { takePhoto() }
+
+        outputDirectory = getOutputDirectory()
+
+        cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
     fun startCamera() {
@@ -43,7 +57,7 @@ class Camera(context: Context) {
             val preview = Preview.Builder()
                 .build()
                 .also {
-                    it.setSurfaceProvider(((MainActivity)Camera.context).viewFinder.surfaceProvider)
+                    it.setSurfaceProvider((context as MainActivity).viewFinder.surfaceProvider)
                 }
 
             // Select back camera as a default
@@ -55,29 +69,28 @@ class Camera(context: Context) {
 
                 // Bind use cases to camera
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview)
+                    (context as MainActivity), cameraSelector, preview)
 
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
 
-        }, ContextCompat.getMainExecutor(this))
+        }, ContextCompat.getMainExecutor(context))
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
-            baseContext, it) == PackageManager.PERMISSION_GRANTED
+            (context as MainActivity).baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun getOutputDirectory(): File {
-        val mediaDir = externalMediaDirs.firstOrNull()?.let {
-            File(it, resources.getString(R.string.app_name)).apply { mkdirs() } }
+        val mediaDir = (context as MainActivity).externalMediaDirs.firstOrNull()?.let {
+            File(it, (context as MainActivity).resources.getString(R.string.app_name)).apply { mkdirs() } }
         return if (mediaDir != null && mediaDir.exists())
-            mediaDir else filesDir
+            mediaDir else (context as MainActivity).filesDir
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    fun onDestroy() {
         cameraExecutor.shutdown()
     }
 
@@ -88,18 +101,17 @@ class Camera(context: Context) {
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 
-    override fun onRequestPermissionsResult(
+    fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<String>, grantResults:
         IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
                 startCamera()
             } else {
-                Toast.makeText(this,
+                Toast.makeText((context as MainActivity),
                     "Permissions not granted by the user.",
                     Toast.LENGTH_SHORT).show()
-                finish()
+                (context as MainActivity).finish()
             }
         }
     }
