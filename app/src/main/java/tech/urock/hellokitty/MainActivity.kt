@@ -59,7 +59,9 @@ class MainActivity : AppCompatActivity() {
     fun setupTimer() {
         pingTimer = object : CountDownTimer(500000, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                textView.text = "Я насчитал ${++counter} ворон"
+                var socketConnectionState: String
+                socketConnectionState = if (netIff.getConnectionStatus() == true) "State connected.\n" else "State disconnected.\n"
+                "$socketConnectionState Time from start: ${++counter} sec".also { textView.text = it }
                 netIff.sendStatus(counter)
                 if (counter % 5 == 0)
                     netIff.postPingRequest()
