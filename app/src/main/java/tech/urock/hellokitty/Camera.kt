@@ -30,6 +30,10 @@ import android.graphics.*
 import java.io.ByteArrayOutputStream
 
 import android.media.Image
+import android.graphics.Bitmap
+
+
+
 
 
 typealias ListenerForPreview = (bitmap: Bitmap) -> Unit
@@ -105,8 +109,28 @@ class Camera(context: Context, videoConfig: VideoConfig) {
     fun getPreviewImage(): String {
 
         if (frameInitOK) {
+
+            val matrix = Matrix()
+
+            matrix.postRotate(90F)
+
+            val scaledBitmap = Bitmap.createScaledBitmap(
+                previewFrameBitmap,
+                previewFrameBitmap.width,
+                previewFrameBitmap.height, true)
+
+            val rotatedBitmap = Bitmap.createBitmap(
+                scaledBitmap,
+                0,
+                0,
+                scaledBitmap.width,
+                scaledBitmap.height,
+                matrix,
+                true
+            )
+
             val baos = ByteArrayOutputStream()
-            previewFrameBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
             val imageBytes: ByteArray = baos.toByteArray()
             val imageString = Base64.encodeToString(imageBytes, Base64.DEFAULT)
 
@@ -147,7 +171,7 @@ class Camera(context: Context, videoConfig: VideoConfig) {
 
 
             val imageAnalyzer = ImageAnalysis.Builder()
-//                .setTargetResolution(videoConfig.getSize())
+                .setTargetResolution(videoConfig.getSize())
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor, PreviewExtractor { bitmap ->
