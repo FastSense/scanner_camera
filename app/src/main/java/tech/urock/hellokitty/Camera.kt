@@ -32,13 +32,7 @@ import java.io.ByteArrayOutputStream
 import android.media.Image
 import android.graphics.Bitmap
 
-
-
-
-
 typealias ListenerForPreview = (bitmap: Bitmap) -> Unit
-
-
 
 private class PreviewExtractor(private val listener: ListenerForPreview) : ImageAnalysis.Analyzer {
 
@@ -74,17 +68,12 @@ private class PreviewExtractor(private val listener: ListenerForPreview) : Image
     override fun analyze(image: ImageProxy) {
 
         val image_i: Image? = image.getImage()
-
         val bitmap = image_i?.let { toBitmap(it) }
-
-        println(bitmap)
 
         if (bitmap != null) {
             listener(bitmap)
         }
-
         image.close()
-
     }
 }
 
