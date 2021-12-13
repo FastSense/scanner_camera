@@ -2,6 +2,7 @@ package tech.urock.hellokitty
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Size
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.HashMap
@@ -93,6 +94,10 @@ class VideoConfig (context: Context) {
         preview_height = preview_height_i
 
         print()
+    }
+
+    fun getSize(): Size {
+        return Size(preview_width, preview_height)
     }
 
 //    fun toSharedPref() {
