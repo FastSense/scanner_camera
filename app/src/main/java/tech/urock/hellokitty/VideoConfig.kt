@@ -7,8 +7,12 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.util.HashMap
 
+enum class FullResolution {
+    FOURK, FULLHD
+}
+
 class VideoConfig (context: Context) {
-    var fullResolution: Int = 1 // 0 - fullhd, 1 - 4k
+    var fullResolution: FullResolution = FullResolution.FOURK
     var iso: Int = 1500
     var exposure: Int = 640
     var preview_fps: Int = 10
@@ -47,7 +51,7 @@ class VideoConfig (context: Context) {
         val videoConfig = HashMap<String, Any>()
         val previewResolution = HashMap<String, Int>()
 
-        videoConfig["fullResolution"] = if (fullResolution > 0) "4k" else "fullhd"
+        videoConfig["fullResolution"] = if (fullResolution == FullResolution.FOURK) "4k" else "fullhd"
         videoConfig["iso"] = iso
         videoConfig["exposure"] = exposure
         previewResolution["width"] = preview_width
@@ -62,7 +66,7 @@ class VideoConfig (context: Context) {
     fun fromJson(data: JSONObject) {
         println("VideoConfig: $data")
 
-        var fullResolution_i: Int = 1 // 0 - FullHD, 1 - 4K
+        var fullResolution_i: FullResolution = FullResolution.FOURK
         var iso_i: Int = 1500
         var exposure_i: Int = 640
         var preview_fps_i: Int = 13
@@ -73,7 +77,7 @@ class VideoConfig (context: Context) {
 
         val message: String
         try {
-            fullResolution_i = if (data.getString("fullResolution") == "4k") 1 else 0
+            fullResolution_i = if (data.getString("fullResolution") == "4k") FullResolution.FOURK else FullResolution.FULLHD
             iso_i = data.getInt("iso")
             exposure_i = data.getInt("exposure")
             preview_fps_i = data.getInt("previewFps")

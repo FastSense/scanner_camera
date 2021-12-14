@@ -98,12 +98,12 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
     }
 
 
-    fun sendStatus(timestamp: Long, image_str: String) {
+    fun sendStatus(timeFromStart: Long, image_str: String) {
         val status_map = HashMap<String, Any>()
 
         status_map["cameraState"] = "ready"
         status_map["videoConfig"] = videoConfig.map()
-        status_map["videoDuration"] = timestamp.toInt()
+        status_map["videoDuration"] = timeFromStart.toInt()
         status_map["frame"] = image_str
 
         val status_json: JSONObject = JSONObject(status_map as Map<String, Any>?)
