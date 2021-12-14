@@ -43,8 +43,12 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
     private var mSocket: Socket? = null
 
     private var onConfig: Emitter.Listener? = null
+    private var onStart: Emitter.Listener? = null
+    private var onStop: Emitter.Listener? = null
 
     private var videoConfig: VideoConfig = video_config
+
+    private var camera: Camera = camera
 
 
 
@@ -88,7 +92,28 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 //            videoConfig.toSharedPref()
         }
 
+        onStart = Emitter.Listener { args ->
+            val data = args[0] as JSONObject
+            try {
+                val scan_id = data.getString("id")
+            } catch (e: JSONException) {
+                println("onStart: JSONException")
+                return@Listener
+            }
+
+            println("Start recording")
+            camera.startRecordVideo()
+        }
+
+        onStop = Emitter.Listener { args ->
+            println("Stop recording")
+            camera.stopRecordVideo()
+        }
+
+
         mSocket?.on("config", onConfig);
+        mSocket?.on("start", onStart);
+        mSocket?.on("stop", onStop);
         mSocket?.connect()
 
     }
