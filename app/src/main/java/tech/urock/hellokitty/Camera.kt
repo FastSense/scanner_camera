@@ -108,7 +108,7 @@ class Camera(context: Context, videoConfig: VideoConfig) {
             val rotatedBitmap = rotateBitmap(previewFrameBitmap)
 
             val baos = ByteArrayOutputStream()
-            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, videoConfig.preview_quality, baos)
             val imageBytes: ByteArray = baos.toByteArray()
             val imageString = Base64.encodeToString(imageBytes, Base64.DEFAULT)
 
