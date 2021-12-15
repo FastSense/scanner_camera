@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var netIff: NetworkInterface
 
     private var videoConfig: VideoConfig = VideoConfig(this)
-    private var camera: Camera = Camera(this, videoConfig)
+    private var camera: MyCamera = MyCamera(this, videoConfig)
 
     private var startTimeMs: Long = System.currentTimeMillis()
 
