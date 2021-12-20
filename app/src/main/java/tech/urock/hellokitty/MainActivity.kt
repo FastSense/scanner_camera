@@ -11,6 +11,18 @@ import android.widget.Button
 import android.os.CountDownTimer
 import java.util.*
 
+import androidx.annotation.RequiresApi
+
+import android.graphics.ImageFormat
+import android.hardware.camera2.CameraAccessException
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.hardware.camera2.params.StreamConfigurationMap
+import android.os.Build
+import android.util.Log
+import android.util.Size
+
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -20,7 +32,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var netIff: NetworkInterface
 
     private var videoConfig: VideoConfig = VideoConfig(this)
-    private var camera: MyCamera = MyCamera(this, videoConfig)
+//    private lateinit var camera: MyCamera = MyCamera(this, videoConfig)
+    private lateinit var camera: MyCamera
 
     private var startTimeMs: Long = System.currentTimeMillis()
 
@@ -74,7 +87,7 @@ class MainActivity : AppCompatActivity() {
 
 //                println("$currentTimeMs")
 
-                netIff.sendStatus((currentTimeMs - startTimeMs)/1000, camera.getPreviewImage())
+//                netIff.sendStatus((currentTimeMs - startTimeMs)/1000, camera.getPreviewImage())
                 if (counter % 5 == 0)
                     netIff.postPingRequest()
 
@@ -89,16 +102,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun setupCamera() {
-        camera.setup()
+
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<String>, grantResults:
-        IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        camera.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
+//    override fun onRequestPermissionsResult(
+//        requestCode: Int, permissions: Array<String>, grantResults:
+//        IntArray) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//
+//        camera.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//    }
 
 }
 
