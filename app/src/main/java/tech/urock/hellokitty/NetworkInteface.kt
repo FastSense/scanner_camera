@@ -2,6 +2,7 @@ package tech.urock.hellokitty
 
 import java.util.*
 import android.content.Context
+import android.hardware.camera2.CameraManager
 
 
 import com.android.volley.toolbox.Volley
@@ -27,7 +28,7 @@ import java.net.URISyntaxException
 class NetworkInterface (context: Context, http_server_ip: String, http_port: String,
                         socket_server_ip: String, s_port: String,
                         phone_name: String, cam_pose: String, video_config: VideoConfig,
-                        camera: MyCamera)
+                        camera: CameraService)
 
 {
     private val volleyRequestQueue = Volley.newRequestQueue(context)
@@ -48,9 +49,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 
     private var videoConfig: VideoConfig = video_config
 
-    private var camera: MyCamera = camera
-
-
+    private var camera = camera
 
 
     fun init() {
@@ -89,7 +88,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
         onConfig = Emitter.Listener { args ->
             val data = args[0] as JSONObject
             videoConfig.fromJson(data)
-            camera.setExposureCompensationIndex(videoConfig.preview_fps)
+//            camera.setExposureCompensationIndex(videoConfig.preview_fps)
 //            videoConfig.toSharedPref()
         }
 

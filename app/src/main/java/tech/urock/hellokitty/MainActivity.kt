@@ -10,6 +10,7 @@ import android.widget.ImageButton
 import android.widget.Button
 import android.os.CountDownTimer
 import java.util.*
+import android.Manifest
 
 import androidx.annotation.RequiresApi
 
@@ -21,6 +22,14 @@ import android.hardware.camera2.params.StreamConfigurationMap
 import android.os.Build
 import android.util.Log
 import android.util.Size
+import androidx.core.content.PackageManagerCompat
+import androidx.core.content.PackageManagerCompat.LOG_TAG
+import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
+
+import androidx.core.content.ContextCompat
+import android.view.TextureView
+
 
 
 
@@ -31,13 +40,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pingTimer: CountDownTimer
     private lateinit var netIff: NetworkInterface
 
+    private lateinit var mImageView: TextureView
+
     private var videoConfig: VideoConfig = VideoConfig(this)
-//    private lateinit var camera: MyCamera = MyCamera(this, videoConfig)
-    private lateinit var camera: MyCamera
 
     private var startTimeMs: Long = System.currentTimeMillis()
 
+// camera2
 
+    private lateinit var mCameraManager: CameraManager
+
+    private lateinit var myCamera: CameraService
+    private val CAMERA1 = 0
+    private val CAMERA2 = 1
+    private val LOG_TAG = "myLogs"
+//    private var myCamera: CameraService = CameraService(this, videoConfig)
+//end camera2
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,8 +63,10 @@ class MainActivity : AppCompatActivity() {
 
         setupViews()
         setupCamera()
-        setupNetwork()
-        setupTimer()
+
+//        myCamera.openCamera()
+//        setupNetwork()
+//        setupTimer()
     }
 
     fun setupViews() {
@@ -54,6 +74,9 @@ class MainActivity : AppCompatActivity() {
         textView = findViewById(R.id.textView)
 //        val imageButton: ImageButton = findViewById(R.id.imageButton)
         val button : Button = findViewById(R.id.button)
+
+        mImageView = findViewById(R.id.textureView);
+
 
 //        imageButton.setOnClickListener {
 //            pingTimer.cancel()
@@ -71,7 +94,7 @@ class MainActivity : AppCompatActivity() {
                                 getString(R.string.socket_server_ip),
                                 getString(R.string.s_port),
                                 getString(R.string.phone_name),
-                                getString(R.string.cam_pose), videoConfig, camera)
+                                getString(R.string.cam_pose), videoConfig, myCamera)
         netIff.init()
     }
 
@@ -101,17 +124,55 @@ class MainActivity : AppCompatActivity() {
         pingTimer.start()
     }
 
-    fun setupCamera() {
-
-    }
-
 //    override fun onRequestPermissionsResult(
 //        requestCode: Int, permissions: Array<String>, grantResults:
 //        IntArray) {
 //        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 //
-//        camera.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//        myCamera.onRequestPermissionsResult(requestCode, permissions, grantResults)
 //    }
+
+    // camera2
+
+    fun setupCamera() {
+
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+            ||
+            ContextCompat.checkSelfPermission(
+                this@MainActivity,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ), 1
+            )
+        }
+
+        mCameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
+        try {
+
+            // Получение списка камер с устройства
+//            myCamera = arrayOfNulls(mCameraManager.cameraIdList.size)
+            for (cameraID in mCameraManager.cameraIdList) {
+                Log.i(LOG_TAG, "cameraID: $cameraID")
+                val id = cameraID.toInt()
+
+                // создаем обработчик для камеры
+                if (id == 0) {
+                    myCamera = CameraService(this, videoConfig, mCameraManager, cameraID, mImageView)
+                }
+            }
+        } catch (e: CameraAccessException) {
+            Log.e(LOG_TAG, e.message!!)
+            e.printStackTrace()
+        }
+    }
+
+
+    // end camera2
 
 }
 
