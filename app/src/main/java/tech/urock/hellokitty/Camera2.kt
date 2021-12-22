@@ -107,10 +107,17 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
     fun getPreviewImage(): String {
 
+        if (mImageView.surfaceTexture == null) {
+            Log.i(LOG_TAG, "error! getPreviewImage surfaceTexture = null")
+            return base64DefString
+        }
+
+
         var s: String
         val view = mImageView
 
         if (view.bitmap == null) {
+            Log.i(LOG_TAG, "error! getPreviewImage view.bitmap = null")
             s = base64DefString
         } else {
             var b: Bitmap = getResizedBitmap(

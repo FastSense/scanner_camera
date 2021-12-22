@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
 // camera2
 
     private lateinit var mCameraManager: CameraManager
+    private var cameraReady = false
 
     private var myCamera: CameraService? = null
     private val CAMERA1 = 0
@@ -62,11 +63,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setupViews()
-
-
-
-//        setupNetwork()
-//        setupTimer()
+        setupNetwork()
+        setupTimer()
     }
 
     fun setupViews() {
@@ -80,9 +78,10 @@ class MainActivity : AppCompatActivity() {
         myTextureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
                 setupCamera()
-                println("Opening camera")
                 Log.i(LOG_TAG, "Opening camera")
                 myCamera?.openCamera()
+                Log.i(LOG_TAG, "Camera ready")
+                cameraReady = true
             }
             override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
             override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
@@ -124,8 +123,9 @@ class MainActivity : AppCompatActivity() {
                 "$socketConnectionState Time from start: ${(currentTimeMs - startTimeMs)/1000} sec".also { textView.text = it }
 
 //                println("$currentTimeMs")
+                if (cameraReady)
+                    netIff.sendStatus((currentTimeMs - startTimeMs)/1000, myCamera!!.getPreviewImage())
 
-//                netIff.sendStatus((currentTimeMs - startTimeMs)/1000, camera.getPreviewImage())
                 if (counter % 5 == 0)
                     netIff.postPingRequest()
 
