@@ -28,7 +28,7 @@ import java.net.URISyntaxException
 class NetworkInterface (context: Context, http_server_ip: String, http_port: String,
                         socket_server_ip: String, s_port: String,
                         phone_name: String, cam_pose: String, video_config: VideoConfig,
-                        camera: CameraService)
+                        camera: CameraService?)
 
 {
     private val volleyRequestQueue = Volley.newRequestQueue(context)
@@ -102,12 +102,12 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
             }
 
             println("Start recording")
-            camera.startRecordVideo()
+            camera?.startRecordVideo()
         }
 
         onStop = Emitter.Listener { args ->
             println("Stop recording")
-            camera.stopRecordVideo()
+            camera?.stopRecordVideo()
         }
 
 

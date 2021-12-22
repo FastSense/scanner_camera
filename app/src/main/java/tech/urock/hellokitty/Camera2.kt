@@ -162,6 +162,7 @@ class CameraService(context: Context, videoConfig: VideoConfig,
     fun openCamera() {
         try {
             if (context.checkSelfPermission(Manifest.permission.CAMERA) === PackageManager.PERMISSION_GRANTED) {
+                println("before mCameraManager.openCamera")
                 mCameraManager.openCamera(mCameraID, mCameraCallback, null)
             }
         } catch (e: CameraAccessException) {
@@ -170,12 +171,17 @@ class CameraService(context: Context, videoConfig: VideoConfig,
     }
 
     private fun createCameraPreviewSession() {
-        val texture: SurfaceTexture? = mImageView.getSurfaceTexture()
+        val texture: SurfaceTexture? = mImageView.surfaceTexture
+        println("createCameraPreviewSession 0 ${mImageView} ${texture}")
+//        return
         // texture.setDefaultBufferSize(1920,1080);
         val surface = Surface(texture)
+        println("createCameraPreviewSession 1")
+//        return
         try {
             val builder = mCameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             builder.addTarget(surface)
+            println("createCameraPreviewSession 2")
             mCameraDevice!!.createCaptureSession(
                 listOf(surface),
                 object : CameraCaptureSession.StateCallback() {

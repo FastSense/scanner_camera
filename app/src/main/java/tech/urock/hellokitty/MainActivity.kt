@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pingTimer: CountDownTimer
     private lateinit var netIff: NetworkInterface
 
-    private lateinit var mImageView: TextureView
+    private lateinit var myTextureView: TextureView
 
     private var videoConfig: VideoConfig = VideoConfig(this)
 
@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mCameraManager: CameraManager
 
-    private lateinit var myCamera: CameraService
+    private var myCamera: CameraService? = null
     private val CAMERA1 = 0
     private val CAMERA2 = 1
     private val LOG_TAG = "myLogs"
@@ -62,9 +62,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setupViews()
-        setupCamera()
 
-//        myCamera.openCamera()
+
+
 //        setupNetwork()
 //        setupTimer()
     }
@@ -75,7 +75,22 @@ class MainActivity : AppCompatActivity() {
 //        val imageButton: ImageButton = findViewById(R.id.imageButton)
         val button : Button = findViewById(R.id.button)
 
-        mImageView = findViewById(R.id.textureView);
+        myTextureView = findViewById(R.id.textureView)
+
+        myTextureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                setupCamera()
+                println("Opening camera")
+                Log.i(LOG_TAG, "Opening camera")
+                myCamera?.openCamera()
+            }
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                return false
+            }
+
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+        }
 
 
 //        imageButton.setOnClickListener {
@@ -162,7 +177,8 @@ class MainActivity : AppCompatActivity() {
 
                 // создаем обработчик для камеры
                 if (id == 0) {
-                    myCamera = CameraService(this, videoConfig, mCameraManager, cameraID, mImageView)
+                    Log.i(LOG_TAG, "Creating myCamera cameraID=: $cameraID")
+                    myCamera = CameraService(this, videoConfig, mCameraManager, cameraID, myTextureView)
                 }
             }
         } catch (e: CameraAccessException) {
