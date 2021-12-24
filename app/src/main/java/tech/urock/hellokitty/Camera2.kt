@@ -107,11 +107,8 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         return resizedBitmap
     }
 
-    fun setShutterSpeed() {
-//        val characteristics: CameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraID)
-
+    fun setShutterSpeedIso() {
         createCameraPreviewSession()
-
     }
 
     fun getPreviewImage(): String {

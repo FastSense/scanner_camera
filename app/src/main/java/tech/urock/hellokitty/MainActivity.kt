@@ -55,8 +55,7 @@ class MainActivity : AppCompatActivity() {
     private val CAMERA1 = 0
     private val CAMERA2 = 1
     private val LOG_TAG = "myLogs"
-//    private var myCamera: CameraService = CameraService(this, videoConfig)
-//end camera2
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,13 +131,9 @@ class MainActivity : AppCompatActivity() {
 
                     if (netIff.newConfigRecieved()) {
                         Log.i(LOG_TAG, "setShutterSpeed")
-                        myCamera!!.setShutterSpeed()
+                        myCamera!!.setShutterSpeedIso()
                     }
 
-//                    if ((cameraReady)&&(counter % 10 == 0)) {
-//                        Log.i(LOG_TAG, "setShutterSpeed")
-////                        myCamera!!.setShutterSpeed()
-//                    }
 
                 }
                 ++counter
@@ -152,13 +147,6 @@ class MainActivity : AppCompatActivity() {
         pingTimer.start()
     }
 
-//    override fun onRequestPermissionsResult(
-//        requestCode: Int, permissions: Array<String>, grantResults:
-//        IntArray) {
-//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-//
-//        myCamera.onRequestPermissionsResult(requestCode, permissions, grantResults)
-//    }
 
     // camera2
 
