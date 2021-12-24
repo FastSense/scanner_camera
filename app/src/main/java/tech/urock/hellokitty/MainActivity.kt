@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setupViews()
-        setupNetwork()
+//        setupNetwork() // now we setup network after camera is ready
         setupTimer()
     }
 
@@ -115,21 +115,34 @@ class MainActivity : AppCompatActivity() {
     fun setupTimer() {
         pingTimer = object : CountDownTimer(500000, (1/videoConfig.preview_fps.toFloat() * 1000).toLong()) {
             override fun onTick(millisUntilFinished: Long) {
-                var currentTimeMs: Long = System.currentTimeMillis()
+                if (cameraReady) {
+                    var currentTimeMs: Long = System.currentTimeMillis()
 
-                var socketConnectionState: String
-                socketConnectionState = if (netIff.getConnectionStatus() == true) "State connected.\n" else "State disconnected.\n"
+                    var socketConnectionState: String
+                    socketConnectionState = if (netIff.getConnectionStatus() == true) "State connected.\n" else "State disconnected.\n"
 
-                "$socketConnectionState Time from start: ${(currentTimeMs - startTimeMs)/1000} sec".also { textView.text = it }
+                    "$socketConnectionState Time from start: ${(currentTimeMs - startTimeMs)/1000} sec".also { textView.text = it }
 
 //                println("$currentTimeMs")
-                if (cameraReady)
+
                     netIff.sendStatus((currentTimeMs - startTimeMs)/1000, myCamera!!.getPreviewImage())
 
-                if (counter % 5 == 0)
-                    netIff.postPingRequest()
+                    if (counter % 5 == 0)
+                        netIff.postPingRequest()
 
+                    if (netIff.newConfigRecieved()) {
+                        Log.i(LOG_TAG, "setShutterSpeed")
+                        myCamera!!.setShutterSpeed()
+                    }
+
+//                    if ((cameraReady)&&(counter % 10 == 0)) {
+//                        Log.i(LOG_TAG, "setShutterSpeed")
+////                        myCamera!!.setShutterSpeed()
+//                    }
+
+                }
                 ++counter
+
             }
             override fun onFinish() {
                 this.start(); //start again the CountDownTimer
@@ -179,6 +192,7 @@ class MainActivity : AppCompatActivity() {
                 if (id == 0) {
                     Log.i(LOG_TAG, "Creating myCamera cameraID=: $cameraID")
                     myCamera = CameraService(this, videoConfig, mCameraManager, cameraID, myTextureView)
+                    setupNetwork()
                 }
             }
         } catch (e: CameraAccessException) {

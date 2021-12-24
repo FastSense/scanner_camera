@@ -51,6 +51,8 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 
     private var camera = camera
 
+    private var configUpdated: Boolean = false
+
 
     fun init() {
 
@@ -78,6 +80,15 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
         volleyRequestQueue.add(pingRequest)
     }
 
+    fun newConfigRecieved(): Boolean {
+        if (configUpdated) {
+            configUpdated = false
+            return true
+        } else {
+            return false
+        }
+    }
+
     fun connectToSocketServer() {
         try {
             mSocket = IO.socket("http://${socketServerIp}:${socketPort}")
@@ -88,8 +99,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
         onConfig = Emitter.Listener { args ->
             val data = args[0] as JSONObject
             videoConfig.fromJson(data)
-//            camera.setExposureCompensationIndex(videoConfig.preview_fps)
-//            videoConfig.toSharedPref()
+            configUpdated = true
         }
 
         onStart = Emitter.Listener { args ->

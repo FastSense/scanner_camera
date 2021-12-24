@@ -86,6 +86,8 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
     private val LOG_TAG = "myLogs"
 
+    private lateinit var builder: CaptureRequest.Builder
+
 
     fun getResizedBitmap(bm: Bitmap, newWidth: Int, newHeight: Int): Bitmap {
         val width = bm.width
@@ -103,6 +105,13 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         )
         bm.recycle()
         return resizedBitmap
+    }
+
+    fun setShutterSpeed() {
+//        val characteristics: CameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraID)
+
+        createCameraPreviewSession()
+
     }
 
     fun getPreviewImage(): String {
@@ -186,9 +195,14 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         println("createCameraPreviewSession 1")
 //        return
         try {
-            val builder = mCameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+            builder = mCameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             builder.addTarget(surface)
             println("createCameraPreviewSession 2")
+            builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
+
+            builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, videoConfig.exposure)
+            builder.set(CaptureRequest.SENSOR_SENSITIVITY, videoConfig.iso)
+
             mCameraDevice!!.createCaptureSession(
                 listOf(surface),
                 object : CameraCaptureSession.StateCallback() {

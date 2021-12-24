@@ -13,8 +13,8 @@ enum class FullResolution {
 
 class VideoConfig (context: Context) {
     var fullResolution: FullResolution = FullResolution.FOURK
-    var iso: Int = 1500
-    var exposure: Int = 640
+    var iso: Int = 1000
+    var exposure: Long = 1000000 // in nanoseconds
     var preview_fps: Int = 10
     var preview_quality: Int = 30
     var preview_width: Int = 216
@@ -53,7 +53,7 @@ class VideoConfig (context: Context) {
 
         videoConfig["fullResolution"] = if (fullResolution == FullResolution.FOURK) "4k" else "fullhd"
         videoConfig["iso"] = iso
-        videoConfig["exposure"] = exposure
+        videoConfig["exposure"] = (1000000000/exposure.toDouble()).toInt()
         previewResolution["width"] = preview_width
         previewResolution["height"] = preview_height
         videoConfig["previewResolution"] = previewResolution
@@ -91,7 +91,8 @@ class VideoConfig (context: Context) {
         }
         fullResolution = fullResolution_i
         iso = iso_i
-        exposure = exposure_i
+        val dt: Double = 1/exposure_i.toDouble()   // in sec
+        exposure = (dt*1000000000).toLong()     // in nanoseconds
         preview_fps = preview_fps_i
         preview_quality = preview_quality_i
         preview_width = preview_width_i
