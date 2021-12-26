@@ -112,12 +112,12 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
             }
 
             println("Start recording")
-            camera?.startRecordVideo()
+//            camera?.startRecordVideo()
         }
 
         onStop = Emitter.Listener { args ->
             println("Stop recording")
-            camera?.stopRecordVideo()
+//            camera?.stopRecordVideo()
         }
 
 

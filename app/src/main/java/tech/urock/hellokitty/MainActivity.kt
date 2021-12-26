@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
     private val CAMERA2 = 1
     private val LOG_TAG = "myLogs"
 
-
+    private var recording_video: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         setupTimer()
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     fun setupViews() {
         setContentView(R.layout.activity_main)
         textView = findViewById(R.id.textView)
@@ -91,12 +92,15 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-//        imageButton.setOnClickListener {
-//            pingTimer.cancel()
-//        }
 
         button.setOnClickListener {
-
+            if (!recording_video) {
+                myCamera?.startRecordVideo("2109")
+                recording_video = true
+            } else {
+                myCamera?.stopRecordVideo()
+                recording_video = false
+            }
         }
     }
 
@@ -126,8 +130,8 @@ class MainActivity : AppCompatActivity() {
 
                     netIff.sendStatus((currentTimeMs - startTimeMs)/1000, myCamera!!.getPreviewImage())
 
-                    if (counter % 5 == 0)
-                        netIff.postPingRequest()
+//                    if (counter % 5 == 0)
+//                        netIff.postPingRequest()
 
                     if (netIff.newConfigRecieved()) {
                         Log.i(LOG_TAG, "setShutterSpeed")
@@ -152,20 +156,28 @@ class MainActivity : AppCompatActivity() {
 
     fun setupCamera() {
 
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
-            ||
+        Log.d(LOG_TAG, "Запрашиваем разрешение")
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(
                 this@MainActivity,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+            ||
+            ContextCompat.checkSelfPermission(
+                this@MainActivity,
+                Manifest.permission.RECORD_AUDIO
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(
                 arrayOf(
                     Manifest.permission.CAMERA,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.RECORD_AUDIO
                 ), 1
             )
         }
+
+
 
         mCameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
         try {

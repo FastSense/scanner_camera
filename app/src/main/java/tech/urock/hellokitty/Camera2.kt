@@ -9,8 +9,6 @@ import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.params.StreamConfigurationMap
-import android.os.Build
-import android.os.Bundle
 import android.util.Log
 import android.util.Size
 
@@ -55,6 +53,16 @@ import android.hardware.camera2.CaptureRequest
 import android.graphics.SurfaceTexture
 import android.view.Surface
 import android.view.TextureView
+import android.media.MediaRecorder
+
+import android.media.CamcorderProfile
+import android.os.*
+
+import java.lang.Exception
+import android.os.HandlerThread
+
+
+
 
 
 class CameraService(context: Context, videoConfig: VideoConfig,
@@ -88,6 +96,27 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
     private lateinit var builder: CaptureRequest.Builder
 
+    private var mBackgroundThread: HandlerThread? = null
+    private var mBackgroundHandler: Handler? = null
+
+    private var mMediaRecorder: MediaRecorder? = null
+
+    private fun startBackgroundThread() {
+        mBackgroundThread = HandlerThread("CameraBackground")
+        mBackgroundThread?.start()
+        mBackgroundHandler = mBackgroundThread?.getLooper()?.let { Handler(it) }
+    }
+
+    private fun stopBackgroundThread() {
+        mBackgroundThread!!.quitSafely()
+        try {
+            mBackgroundThread!!.join()
+            mBackgroundThread = null
+            mBackgroundHandler = null
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        }
+    }
 
     fun getResizedBitmap(bm: Bitmap, newWidth: Int, newHeight: Int): Bitmap {
         val width = bm.width
@@ -108,7 +137,7 @@ class CameraService(context: Context, videoConfig: VideoConfig,
     }
 
     fun setShutterSpeedIso() {
-        createCameraPreviewSession()
+        createCameraPreviewSession(false)
     }
 
     fun getPreviewImage(): String {
@@ -141,12 +170,25 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
     }
 
-    fun startRecordVideo() {
-
+    @RequiresApi(Build.VERSION_CODES.S)
+    fun startRecordVideo(file_id: String) {
+        if (setUpMediaRecorder(file_id) == 0) {
+            createCameraPreviewSession(true)
+            mMediaRecorder?.start()
+        }
     }
 
     fun stopRecordVideo() {
+        try {
+            mCaptureSession.stopRepeating()
+            mCaptureSession.abortCaptures()
+            mCaptureSession.close()
+        } catch (e: CameraAccessException) {
+            e.printStackTrace()
+        }
 
+        mMediaRecorder!!.stop()
+        mMediaRecorder!!.release()
     }
 
     fun isOpen(): Boolean {
@@ -158,7 +200,7 @@ class CameraService(context: Context, videoConfig: VideoConfig,
             override fun onOpened(camera: CameraDevice) {
                 mCameraDevice = camera
                 Log.i(LOG_TAG, "Open camera  with id:" + mCameraDevice!!.id)
-                createCameraPreviewSession()
+                createCameraPreviewSession(false)
             }
 
             override fun onDisconnected(camera: CameraDevice) {
@@ -176,6 +218,7 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         try {
             if (context.checkSelfPermission(Manifest.permission.CAMERA) === PackageManager.PERMISSION_GRANTED) {
                 println("before mCameraManager.openCamera")
+                outputDirectory = getOutputDirectory()
                 mCameraManager.openCamera(mCameraID, mCameraCallback, null)
             }
         } catch (e: CameraAccessException) {
@@ -183,11 +226,11 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         }
     }
 
-    private fun createCameraPreviewSession() {
+    private fun createCameraPreviewSession(record_video: Boolean) {
         val texture: SurfaceTexture? = mImageView.surfaceTexture
         println("createCameraPreviewSession 0 ${mImageView} ${texture}")
 //        return
-        // texture.setDefaultBufferSize(1920,1080);
+        texture?.setDefaultBufferSize(3840,2160);
         val surface = Surface(texture)
         println("createCameraPreviewSession 1")
 //        return
@@ -200,21 +243,54 @@ class CameraService(context: Context, videoConfig: VideoConfig,
             builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, videoConfig.exposure)
             builder.set(CaptureRequest.SENSOR_SENSITIVITY, videoConfig.iso)
 
-            mCameraDevice!!.createCaptureSession(
-                listOf(surface),
-                object : CameraCaptureSession.StateCallback() {
-                    override fun onConfigured(session: CameraCaptureSession) {
-                        mCaptureSession = session
-                        try {
-                            mCaptureSession.setRepeatingRequest(builder.build(), null, null)
-                        } catch (e: CameraAccessException) {
-                            e.printStackTrace()
+            if (record_video) {
+                val recorderSurface = mMediaRecorder?.surface
+                if (recorderSurface != null) {
+                    builder.addTarget(recorderSurface)
+                }
+                mCameraDevice!!.createCaptureSession(
+                    listOf(surface, mMediaRecorder?.surface),
+                    object : CameraCaptureSession.StateCallback() {
+                        override fun onConfigured(session: CameraCaptureSession) {
+                            mCaptureSession = session
+                            try {
+                                mCaptureSession.setRepeatingRequest(
+                                    builder.build(),
+                                    null,
+                                    mBackgroundHandler
+                                )
+                            } catch (e: CameraAccessException) {
+                                e.printStackTrace()
+                            }
                         }
-                    }
 
-                    override fun onConfigureFailed(session: CameraCaptureSession) {}
-                }, null
-            )
+                        override fun onConfigureFailed(session: CameraCaptureSession) {}
+                    }, mBackgroundHandler
+                )
+            } else {
+                mCameraDevice!!.createCaptureSession(
+                    listOf(surface),
+                    object : CameraCaptureSession.StateCallback() {
+                        override fun onConfigured(session: CameraCaptureSession) {
+                            mCaptureSession = session
+                            try {
+                                mCaptureSession.setRepeatingRequest(
+                                    builder.build(),
+                                    null,
+                                    mBackgroundHandler
+                                )
+                            } catch (e: CameraAccessException) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        override fun onConfigureFailed(session: CameraCaptureSession) {}
+                    }, mBackgroundHandler
+                )
+            }
+
+
+
         } catch (e: CameraAccessException) {
             e.printStackTrace()
         }
@@ -227,21 +303,21 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         }
     }
 
-    fun setup() {
-        // Request camera permissions
-        if (allPermissionsGranted()) {
-            startCamera()
-        } else {
-            ActivityCompat.requestPermissions(
-                (context as MainActivity), REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
-        }
-
-    }
-
-    fun startCamera() {
-
-    }
+//    fun setup() {
+//        // Request camera permissions
+//        if (allPermissionsGranted()) {
+//            startCamera()
+//        } else {
+//            ActivityCompat.requestPermissions(
+//                (context as MainActivity), REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
+//            )
+//        }
+//
+//    }
+//
+//    fun startCamera() {
+//
+//    }
 
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -265,5 +341,52 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 
+    // return 0 on ok, -1 on error
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun setUpMediaRecorder(file_id: String): Int {
+//        mMediaRecorder = MediaRecorder(context)
+
+        val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_2160P)
+
+        mMediaRecorder = MediaRecorder()
+//        mMediaRecorder?.setAudioSource(MediaRecorder.AudioSource.MIC)
+        mMediaRecorder?.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+        mMediaRecorder?.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+
+        mMediaRecorder?.setVideoEncodingBitRate(profile.videoBitRate)
+//        mMediaRecorder?.setVideoEncodingBitRate(512 * 1000)
+
+
+        mMediaRecorder?.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+        mMediaRecorder?.setVideoFrameRate(profile.videoFrameRate)
+        mMediaRecorder?.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight)
+//        mMediaRecorder?.setVideoFrameRate(30)
+//        mMediaRecorder?.setVideoSize(640, 480)
+
+//        val mCurrentFile = File(
+//            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
+//            "test_$file_id.mp4"
+//        )
+        val mCurrentFile = File(outputDirectory, "test_$file_id.mp4")
+
+        mMediaRecorder?.setOutputFile(mCurrentFile.getAbsolutePath())
+
+
+        Log.i(LOG_TAG, mCurrentFile.getAbsolutePath())
+
+
+//        mMediaRecorder?.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+//        mMediaRecorder?.setAudioEncodingBitRate(profile.audioBitRate)
+//        mMediaRecorder?.setAudioSamplingRate(profile.audioSampleRate)
+        try {
+            mMediaRecorder?.prepare()
+            Log.i(LOG_TAG, "mMediaRecorder started OK")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Log.i(LOG_TAG, "mMediaRecorder failed to start")
+            return -1
+        }
+        return 0
+    }
 
 }
