@@ -29,8 +29,7 @@ import android.graphics.SurfaceTexture
 
 import androidx.core.content.ContextCompat
 import android.view.TextureView
-
-
+import java.text.SimpleDateFormat
 
 
 class MainActivity : AppCompatActivity() {
@@ -46,24 +45,25 @@ class MainActivity : AppCompatActivity() {
 
     private var startTimeMs: Long = System.currentTimeMillis()
 
-// camera2
 
     private lateinit var mCameraManager: CameraManager
     private var cameraReady = false
 
     private var myCamera: CameraService? = null
-    private val CAMERA1 = 0
-    private val CAMERA2 = 1
+
     private val LOG_TAG = "myLogs"
 
     private var recording_video: Boolean = false
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setupViews()
 //        setupNetwork() // now we setup network after camera is ready
         setupTimer()
+
+
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -93,15 +93,15 @@ class MainActivity : AppCompatActivity() {
 
 
 
-        button.setOnClickListener {
-            if (!recording_video) {
-                myCamera?.startRecordVideo("2109")
-                recording_video = true
-            } else {
-                myCamera?.stopRecordVideo()
-                recording_video = false
-            }
-        }
+//        button.setOnClickListener {
+//            if (!recording_video) {
+//                myCamera?.startRecordVideo("2110")
+//                recording_video = true
+//            } else {
+//                myCamera?.stopRecordVideo()
+//                recording_video = false
+//            }
+//        }
     }
 
     fun setupNetwork() {
@@ -111,12 +111,15 @@ class MainActivity : AppCompatActivity() {
                                 getString(R.string.socket_server_ip),
                                 getString(R.string.s_port),
                                 getString(R.string.phone_name),
-                                getString(R.string.cam_pose), videoConfig, myCamera)
+                                getString(R.string.cam_pose), videoConfig)
         netIff.init()
     }
 
     fun setupTimer() {
+        val sdf = SimpleDateFormat("dd_hh_mm_ss")
+
         pingTimer = object : CountDownTimer(500000, (1/videoConfig.preview_fps.toFloat() * 1000).toLong()) {
+            @RequiresApi(Build.VERSION_CODES.S)
             override fun onTick(millisUntilFinished: Long) {
                 if (cameraReady) {
                     var currentTimeMs: Long = System.currentTimeMillis()
@@ -126,18 +129,37 @@ class MainActivity : AppCompatActivity() {
 
                     "$socketConnectionState Time from start: ${(currentTimeMs - startTimeMs)/1000} sec".also { textView.text = it }
 
-//                println("$currentTimeMs")
+                    val cameraState: String = if (recording_video) "recording" else "ready"
+                    netIff.sendStatus(cameraState, (currentTimeMs - startTimeMs)/1000, myCamera!!.getPreviewImage())
 
-                    netIff.sendStatus((currentTimeMs - startTimeMs)/1000, myCamera!!.getPreviewImage())
+                    if (counter % 5 == 0)
+                        netIff.postPingRequest()
 
-//                    if (counter % 5 == 0)
-//                        netIff.postPingRequest()
+                    val hostCmd = netIff.newCommand()
 
-                    if (netIff.newConfigRecieved()) {
-                        Log.i(LOG_TAG, "setShutterSpeed")
-                        myCamera!!.setShutterSpeedIso()
+                    when (hostCmd.cmd) {
+                        CmdName.SetConfig -> {
+                            Log.i(LOG_TAG, "setShutterSpeed")
+                            myCamera!!.setShutterSpeedIso()
+                        }
+                        CmdName.StartVideo -> {
+                            Log.i(LOG_TAG, "Start Video Record")
+                            val scanId = hostCmd.param
+                            val phone_name = getString(R.string.phone_name)
+                            val side = getString(R.string.cam_pose)
+                            val currentDate = sdf.format(Date())
+                            println(" C DATE is  "+currentDate)
+                            myCamera!!.startRecordVideo("${side}_${currentDate}_${scanId}")
+                            recording_video = true
+                            startTimeMs = System.currentTimeMillis()
+                        }
+                        CmdName.StopVideo -> {
+                            Log.i(LOG_TAG, "Stop Video Record")
+                            myCamera!!.stopRecordVideo()
+                            recording_video = false
+                        }
+
                     }
-
 
                 }
                 ++counter
@@ -183,7 +205,6 @@ class MainActivity : AppCompatActivity() {
         try {
 
             // Получение списка камер с устройства
-//            myCamera = arrayOfNulls(mCameraManager.cameraIdList.size)
             for (cameraID in mCameraManager.cameraIdList) {
                 Log.i(LOG_TAG, "cameraID: $cameraID")
                 val id = cameraID.toInt()

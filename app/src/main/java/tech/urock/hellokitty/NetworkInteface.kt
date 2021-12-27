@@ -25,10 +25,19 @@ import io.socket.client.Socket
 import io.socket.emitter.Emitter;
 import java.net.URISyntaxException
 
+enum class CmdName {
+    None, SetConfig, StartVideo, StopVideo
+}
+
+class HostCmd(iCmd: CmdName, iParam: String) {
+    var cmd: CmdName = iCmd
+    var param: String = iParam
+}
+
 class NetworkInterface (context: Context, http_server_ip: String, http_port: String,
                         socket_server_ip: String, s_port: String,
-                        phone_name: String, cam_pose: String, video_config: VideoConfig,
-                        camera: CameraService?)
+                        phone_name: String, cam_pose: String, video_config: VideoConfig
+                        )
 
 {
     private val volleyRequestQueue = Volley.newRequestQueue(context)
@@ -49,9 +58,11 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 
     private var videoConfig: VideoConfig = video_config
 
-    private var camera = camera
-
     private var configUpdated: Boolean = false
+    private var StartCmdReceived: Boolean = false
+    private var StopCmdReceived: Boolean = false
+
+    private lateinit var currentScanID: String
 
 
     fun init() {
@@ -80,13 +91,19 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
         volleyRequestQueue.add(pingRequest)
     }
 
-    fun newConfigRecieved(): Boolean {
+
+    fun newCommand():HostCmd {
         if (configUpdated) {
             configUpdated = false
-            return true
-        } else {
-            return false
+            return HostCmd(CmdName.SetConfig, "")
+        } else if (StartCmdReceived) {
+            StartCmdReceived = false
+            return HostCmd(CmdName.StartVideo, currentScanID)
+        } else if (StopCmdReceived) {
+            StopCmdReceived = false
+            return HostCmd(CmdName.StopVideo, "")
         }
+        return HostCmd(CmdName.None, "")
     }
 
     fun connectToSocketServer() {
@@ -106,18 +123,17 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
             val data = args[0] as JSONObject
             try {
                 val scan_id = data.getString("id")
+                currentScanID = scan_id
+                StartCmdReceived = true
             } catch (e: JSONException) {
                 println("onStart: JSONException")
                 return@Listener
             }
-
-            println("Start recording")
-//            camera?.startRecordVideo()
         }
 
         onStop = Emitter.Listener { args ->
             println("Stop recording")
-//            camera?.stopRecordVideo()
+            StopCmdReceived = true
         }
 
 
@@ -133,12 +149,14 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
     }
 
 
-    fun sendStatus(timeFromStart: Long, image_str: String) {
+    fun sendStatus(cameraState: String, timeFromStart: Long, image_str: String) {
         val status_map = HashMap<String, Any>()
 
-        status_map["cameraState"] = "ready"
+        val videoDuration: Int = if (cameraState == "ready") 0 else timeFromStart.toInt()
+
+        status_map["cameraState"] = cameraState
         status_map["videoConfig"] = videoConfig.map()
-        status_map["videoDuration"] = timeFromStart.toInt()
+        status_map["videoDuration"] = videoDuration
         status_map["frame"] = image_str
 
         val status_json: JSONObject = JSONObject(status_map as Map<String, Any>?)

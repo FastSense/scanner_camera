@@ -13,8 +13,8 @@ enum class FullResolution {
 
 class VideoConfig (context: Context) {
     var fullResolution: FullResolution = FullResolution.FOURK
-    var iso: Int = 1000
-    var exposure: Long = 1000000 // in nanoseconds
+    var iso: Int = 500
+    var exposure: Long = 10000000 // in nanoseconds
     var preview_fps: Int = 10
     var preview_quality: Int = 30
     var preview_width: Int = 216
