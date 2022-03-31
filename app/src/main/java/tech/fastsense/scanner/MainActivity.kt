@@ -1,12 +1,8 @@
-package tech.urock.hellokitty
+package tech.fastsense.scanner
 
-import android.content.Context
-import android.content.SharedPreferences
-import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.TextView
-import android.widget.ImageButton
 import android.widget.Button
 import android.os.CountDownTimer
 import java.util.*
@@ -14,16 +10,10 @@ import android.Manifest
 
 import androidx.annotation.RequiresApi
 
-import android.graphics.ImageFormat
 import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
-import android.hardware.camera2.params.StreamConfigurationMap
 import android.os.Build
 import android.util.Log
-import android.util.Size
-import androidx.core.content.PackageManagerCompat
-import androidx.core.content.PackageManagerCompat.LOG_TAG
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
 

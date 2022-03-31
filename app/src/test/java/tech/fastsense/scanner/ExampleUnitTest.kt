@@ -1,4 +1,4 @@
-package tech.urock.hellokitty
+package tech.fastsense.scanner
 
 import org.junit.Test
 

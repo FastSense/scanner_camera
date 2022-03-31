@@ -1,7 +1,6 @@
-package tech.urock.hellokitty
+package tech.fastsense.scanner
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Size
 import org.json.JSONException
 import org.json.JSONObject

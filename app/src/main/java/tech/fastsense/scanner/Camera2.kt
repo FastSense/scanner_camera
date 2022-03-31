@@ -1,53 +1,32 @@
-package tech.urock.hellokitty
+package tech.fastsense.scanner
 
 import android.content.Context
 import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AppCompatActivity
 
-import android.graphics.ImageFormat
 import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
-import android.hardware.camera2.params.StreamConfigurationMap
 import android.util.Log
-import android.util.Size
 
 
 import android.Manifest
 import android.content.pm.PackageManager
 
-import android.widget.Toast
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import java.util.concurrent.Executors
 import androidx.camera.core.*
-import androidx.camera.lifecycle.ProcessCameraProvider
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
-import java.nio.ByteBuffer
-import java.util.concurrent.ExecutorService
 
 import android.util.Base64
 
-import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.graphics.*
 import java.io.ByteArrayOutputStream
 
-import android.media.Image
 import android.graphics.Bitmap
-import android.provider.MediaStore
-import androidx.camera.core.Camera
 import androidx.camera.video.*
-import androidx.camera.video.VideoCapture
-import java.text.SimpleDateFormat
 import java.util.*
 import android.hardware.camera2.CameraCaptureSession
 
 import android.hardware.camera2.CameraDevice
-import androidx.core.content.PackageManagerCompat
-import androidx.core.content.PackageManagerCompat.LOG_TAG
-import androidx.core.content.PackageManagerCompat.LOG_TAG
 import android.hardware.camera2.CaptureRequest
 
 import android.graphics.SurfaceTexture
@@ -309,6 +288,8 @@ class CameraService(context: Context, videoConfig: VideoConfig,
     private fun getOutputDirectory(): File {
         val mediaDir = (context as MainActivity).externalMediaDirs.firstOrNull()?.let {
             File(it, (context as MainActivity).resources.getString(R.string.app_name)).apply { mkdirs() } }
+
+        Log.v("AAA", "@@@ $mediaDir")
         return if (mediaDir != null && mediaDir.exists())
             mediaDir else (context as MainActivity).filesDir
     }

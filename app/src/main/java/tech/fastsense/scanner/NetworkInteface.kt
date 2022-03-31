@@ -1,13 +1,11 @@
-package tech.urock.hellokitty
+package tech.fastsense.scanner
 
 import java.util.*
 import android.content.Context
-import android.hardware.camera2.CameraManager
 
 
 import com.android.volley.toolbox.Volley
 import com.android.volley.Request
-import com.android.volley.Response
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.JsonObjectRequest
 import org.json.JSONException
