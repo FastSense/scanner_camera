@@ -1,22 +1,10 @@
 package tech.fastsense.scanner
 
+import android.util.Log
 import java.util.*
-import android.content.Context
 
-
-import com.android.volley.toolbox.Volley
-import com.android.volley.Request
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.JsonObjectRequest
 import org.json.JSONException
 import org.json.JSONObject
-
-
-//import com.android.volley.AuthFailureError
-//import com.android.volley.toolbox.StringRequest
-//import com.android.volley.VolleyError
-//import com.android.volley.toolbox.JsonObjectRequest
-//import com.android.volley.toolbox.JsonArrayRequest
 
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -32,61 +20,33 @@ class HostCmd(iCmd: CmdName, iParam: String) {
     var param: String = iParam
 }
 
-class NetworkInterface (context: Context, http_server_ip: String, http_port: String,
-                        socket_server_ip: String, s_port: String,
-                        phone_name: String, cam_pose: String, video_config: VideoConfig
-                        )
-
-{
-    private val volleyRequestQueue = Volley.newRequestQueue(context)
-    private val httpServerIp: String = http_server_ip
-    private val urlBase: String  = "http://${httpServerIp}:${http_port}"
-    private val socketServerIp: String = socket_server_ip
-    private val socketPort: String = s_port
-    private var pingPayload: JSONObject? = null
-    private var pingRequest: JsonObjectRequest? = null
-    private val phoneName = phone_name
-    private val camPose = cam_pose
-
+class NetworkInterface(
+    private val serverURI: String,
+    private val cameraName: String,
+    private val cameraPose: String,
+    private var videoConfig: VideoConfig
+) {
     private var mSocket: Socket? = null
 
     private var onConfig: Emitter.Listener? = null
     private var onStart: Emitter.Listener? = null
     private var onStop: Emitter.Listener? = null
 
-    private var videoConfig: VideoConfig = video_config
-
     private var configUpdated: Boolean = false
-    private var StartCmdReceived: Boolean = false
-    private var StopCmdReceived: Boolean = false
+    private var startCmdReceived: Boolean = false
+    private var stopCmdReceived: Boolean = false
 
     private lateinit var currentScanID: String
 
-
     fun init() {
-
         val pingPayloadMap = HashMap<String, String>()
-        pingPayloadMap["name"] = phoneName
-        pingPayloadMap["cameraPosition"] = camPose
-
-        pingPayload = JSONObject(pingPayloadMap as Map<String, String>?)
-
-        pingRequest = JsonObjectRequest(
-            Request.Method.POST,
-            "$urlBase/cameras/ping",
-            pingPayload,
-            { response: JSONObject ->
-                println("Ping response: $response")
-            }) { obj: VolleyError -> obj.printStackTrace() }
-
+        pingPayloadMap["name"] = cameraName
+        pingPayloadMap["cameraPosition"] = cameraPose
 
         connectToSocketServer()
-
     }
 
     fun postPingRequest() {
-        println("${pingRequest}")
-        volleyRequestQueue.add(pingRequest)
     }
 
 
@@ -96,22 +56,24 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
                 configUpdated = false
                 HostCmd(CmdName.SetConfig, "")
             }
-            StartCmdReceived -> {
-                StartCmdReceived = false
+            startCmdReceived -> {
+                startCmdReceived = false
                 HostCmd(CmdName.StartVideo, currentScanID)
             }
-            StopCmdReceived -> {
-                StopCmdReceived = false
+            stopCmdReceived -> {
+                stopCmdReceived = false
                 HostCmd(CmdName.StopVideo, "")
             }
             else -> HostCmd(CmdName.None, "")
         }
     }
 
-    fun connectToSocketServer() {
+    private fun connectToSocketServer() {
+        Log.v("fff", "@@@ $serverURI")
         try {
-            mSocket = IO.socket("http://${socketServerIp}:${socketPort}")
+            mSocket = IO.socket(serverURI)
         } catch (e: URISyntaxException) {
+            Log.v("fff", "@@@ URISyntaxException $e")
             println("URISyntaxException")
         }
 
@@ -126,7 +88,7 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
             try {
                 val scan_id = data.getString("id")
                 currentScanID = scan_id
-                StartCmdReceived = true
+                startCmdReceived = true
             } catch (e: JSONException) {
                 println("onStart: JSONException")
                 return@Listener
@@ -135,15 +97,13 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
 
         onStop = Emitter.Listener { args ->
             println("Stop recording")
-            StopCmdReceived = true
+            stopCmdReceived = true
         }
-
 
         mSocket?.on("config", onConfig);
         mSocket?.on("start", onStart);
         mSocket?.on("stop", onStop);
         mSocket?.connect()
-
     }
 
     fun getConnectionStatus(): Boolean? {
@@ -161,9 +121,8 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
         status_map["videoDuration"] = videoDuration
         status_map["frame"] = image_str
 
-        val status_json: JSONObject = JSONObject(status_map as Map<String, Any>?)
-//        println("${status_json}")
-        mSocket?.emit("status", status_json);
+        val statusJson = JSONObject(status_map as Map<String, Any>?)
+        mSocket?.emit("status", statusJson);
     }
 
 }

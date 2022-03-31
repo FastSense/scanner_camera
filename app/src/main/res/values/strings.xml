@@ -8,4 +8,11 @@
     <string name="s_port">8000</string>
     <string name="phone_name">urock_phone</string>
     <string name="cam_pose">right</string>
+    <string name="rec_status_recording">REC %1$s</string>
+    <string name="rec_status_ready">Ready</string>
+    <string name="conn_status_connected">Connected</string>
+    <string name="conn_status_disconnected">Disconnected</string>
+    <string name="cam_loc_right">right</string>
+    <string name="cam_loc_left">left</string>
+    <string name="fab_settings">settings</string>
 </resources>
