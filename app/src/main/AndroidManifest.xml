@@ -22,6 +22,7 @@
         android:usesCleartextTraffic="true">
         <activity
             android:name="tech.fastsense.scanner.MainActivity"
+            android:screenOrientation="fullSensor"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

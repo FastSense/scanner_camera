@@ -7,6 +7,8 @@ import android.widget.Button
 import android.os.CountDownTimer
 import java.util.*
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.ActivityInfo
 
 import androidx.annotation.RequiresApi
 
@@ -45,11 +47,13 @@ class MainActivity : AppCompatActivity() {
 
     private var recording_video: Boolean = false
 
+    @SuppressLint("SourceLockedOrientationActivity")
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         videoConfig = VideoConfig(getSharedPreferences("videoConfig", MODE_PRIVATE))
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         setupViews()
 //        setupNetwork() // now we setup network after camera is ready
@@ -158,7 +162,7 @@ class MainActivity : AppCompatActivity() {
 
             }
             override fun onFinish() {
-                this.start(); //start again the CountDownTimer
+                this.start() //start again the CountDownTimer
             }
         }
 
