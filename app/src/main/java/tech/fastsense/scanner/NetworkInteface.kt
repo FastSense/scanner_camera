@@ -90,18 +90,22 @@ class NetworkInterface (context: Context, http_server_ip: String, http_port: Str
     }
 
 
-    fun newCommand():HostCmd {
-        if (configUpdated) {
-            configUpdated = false
-            return HostCmd(CmdName.SetConfig, "")
-        } else if (StartCmdReceived) {
-            StartCmdReceived = false
-            return HostCmd(CmdName.StartVideo, currentScanID)
-        } else if (StopCmdReceived) {
-            StopCmdReceived = false
-            return HostCmd(CmdName.StopVideo, "")
+    fun newCommand (): HostCmd {
+        return when {
+            configUpdated -> {
+                configUpdated = false
+                HostCmd(CmdName.SetConfig, "")
+            }
+            StartCmdReceived -> {
+                StartCmdReceived = false
+                HostCmd(CmdName.StartVideo, currentScanID)
+            }
+            StopCmdReceived -> {
+                StopCmdReceived = false
+                HostCmd(CmdName.StopVideo, "")
+            }
+            else -> HostCmd(CmdName.None, "")
         }
-        return HostCmd(CmdName.None, "")
     }
 
     fun connectToSocketServer() {

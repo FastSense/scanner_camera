@@ -112,8 +112,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun setupTimer() {
-        val sdf = SimpleDateFormat("dd_hh_mm_ss")
-
         pingTimer = object : CountDownTimer(500000, (1/videoConfig.previewFps.toFloat() * 1000).toLong()) {
             @RequiresApi(Build.VERSION_CODES.S)
             override fun onTick(millisUntilFinished: Long) {
@@ -140,26 +138,17 @@ class MainActivity : AppCompatActivity() {
                         }
                         CmdName.StartVideo -> {
                             Log.i(LOG_TAG, "Start Video Record")
-                            val scanId = hostCmd.param
-                            val phone_name = getString(R.string.phone_name)
-                            val side = getString(R.string.cam_pose)
-                            val currentDate = sdf.format(Date())
-                            println(" C DATE is  "+currentDate)
-                            myCamera!!.startRecordVideo("${side}_${currentDate}_${scanId}")
-                            recording_video = true
-                            startTimeMs = System.currentTimeMillis()
+                            startRecordVideo(hostCmd.param)
                         }
                         CmdName.StopVideo -> {
                             Log.i(LOG_TAG, "Stop Video Record")
-                            myCamera!!.stopRecordVideo()
-                            recording_video = false
+                            stopRecordVideo()
                         }
 
                     }
 
                 }
                 ++counter
-
             }
             override fun onFinish() {
                 this.start() //start again the CountDownTimer
@@ -169,6 +158,25 @@ class MainActivity : AppCompatActivity() {
         pingTimer.start()
     }
 
+    @SuppressLint("SimpleDateFormat")
+    @RequiresApi(Build.VERSION_CODES.S)
+    fun startRecordVideo (scanId: String) {
+        val side = getString(R.string.cam_pose)
+        val sdf = SimpleDateFormat("dd_hh_mm_ss")
+        val currentDate = sdf.format(Date())
+
+        if (!recording_video) {
+            myCamera!!.startRecordVideo("${side}_${currentDate}_${scanId}")
+
+            recording_video = true
+            startTimeMs = System.currentTimeMillis()
+        }
+    }
+
+    fun stopRecordVideo () {
+        myCamera!!.stopRecordVideo()
+        recording_video = false
+    }
 
     // camera2
 

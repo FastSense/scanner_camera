@@ -35,9 +35,7 @@ import android.os.*
 
 import java.lang.Exception
 import android.os.HandlerThread
-
-
-
+import java.lang.IllegalStateException
 
 
 class CameraService(context: Context, videoConfig: VideoConfig,
@@ -154,13 +152,17 @@ class CameraService(context: Context, videoConfig: VideoConfig,
             mCaptureSession.stopRepeating()
             mCaptureSession.abortCaptures()
             mCaptureSession.close()
+
+            mMediaRecorder!!.stop()
+            mMediaRecorder!!.release()
+            createCameraPreviewSession(false)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
+        } catch (e: IllegalStateException) {
+            e.printStackTrace()
+        } catch (e: NullPointerException) {
+            e.printStackTrace()
         }
-
-        mMediaRecorder!!.stop()
-        mMediaRecorder!!.release()
-        createCameraPreviewSession(false)
     }
 
     fun isOpen(): Boolean {
