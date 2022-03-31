@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var myTextureView: TextureView
 
-    private var videoConfig: VideoConfig = VideoConfig(this)
+    private lateinit var videoConfig: VideoConfig
 
     private var startTimeMs: Long = System.currentTimeMillis()
 
@@ -48,6 +48,8 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        videoConfig = VideoConfig(getSharedPreferences("videoConfig", MODE_PRIVATE))
 
         setupViews()
 //        setupNetwork() // now we setup network after camera is ready
@@ -108,7 +110,7 @@ class MainActivity : AppCompatActivity() {
     fun setupTimer() {
         val sdf = SimpleDateFormat("dd_hh_mm_ss")
 
-        pingTimer = object : CountDownTimer(500000, (1/videoConfig.preview_fps.toFloat() * 1000).toLong()) {
+        pingTimer = object : CountDownTimer(500000, (1/videoConfig.previewFps.toFloat() * 1000).toLong()) {
             @RequiresApi(Build.VERSION_CODES.S)
             override fun onTick(millisUntilFinished: Long) {
                 if (cameraReady) {

@@ -12,8 +12,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 
 import androidx.core.content.ContextCompat
-import androidx.camera.core.*
-import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 
 import android.util.Base64
@@ -22,8 +20,6 @@ import android.graphics.*
 import java.io.ByteArrayOutputStream
 
 import android.graphics.Bitmap
-import androidx.camera.video.*
-import java.util.*
 import android.hardware.camera2.CameraCaptureSession
 
 import android.hardware.camera2.CameraDevice
@@ -132,12 +128,12 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         } else {
             var b: Bitmap = getResizedBitmap(
                 view.bitmap!!,
-                videoConfig.preview_width,
-                videoConfig.preview_height
+                videoConfig.previewWidth,
+                videoConfig.previewHeight
             )
 
             val baos = ByteArrayOutputStream()
-            b.compress(Bitmap.CompressFormat.JPEG, videoConfig.preview_quality, baos)
+            b.compress(Bitmap.CompressFormat.JPEG, videoConfig.previewQuality, baos)
             val imageBytes: ByteArray = baos.toByteArray()
             s = Base64.encodeToString(imageBytes, Base64.DEFAULT)
         }
