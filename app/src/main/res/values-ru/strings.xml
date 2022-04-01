@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Camera Control App</string>
+    <string name="rec_status_recording">REC %1$s</string>
+    <string name="rec_status_ready">Готов</string>
+    <string name="conn_status_connected">Подключен</string>
+    <string name="conn_status_disconnected">Отключен</string>
+    <string name="cam_loc_right">Справа</string>
+    <string name="cam_loc_left">Слева</string>
+    <string name="fab_settings">Настройки</string>
+    <string name="settings_camera_name">Имя камеры</string>
+    <string name="settings_server_uri">URI сервера</string>
+    <string name="setting_server_uri_default">http://192.168.118.243:8000</string>
+    <string name="settings_left_side">Слева</string>
+    <string name="settings_right_side">Справа</string>
+    <string name="settings_submit">Сохранить</string>
+    <string name="settings_cancel">Отмена</string>
+    <string name="settings_title">Настройки</string>
+</resources>
