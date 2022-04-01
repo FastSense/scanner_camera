@@ -21,9 +21,9 @@ class HostCmd(iCmd: CmdName, iParam: String) {
 }
 
 class NetworkInterface(
-    private val serverURI: String,
-    private val cameraName: String,
-    private val cameraPose: String,
+    public var serverURI: String,
+    public var cameraName: String,
+    public var cameraPose: String,
     private var videoConfig: VideoConfig
 ) {
     private var mSocket: Socket? = null
@@ -68,7 +68,7 @@ class NetworkInterface(
         }
     }
 
-    private fun connectToSocketServer() {
+    fun connectToSocketServer() {
         Log.v("fff", "@@@ $serverURI")
         try {
             mSocket = IO.socket(serverURI)
@@ -86,9 +86,15 @@ class NetworkInterface(
         onStart = Emitter.Listener { args ->
             val data = args[0] as JSONObject
             try {
-                val scan_id = data.getString("id")
-                currentScanID = scan_id
-                startCmdReceived = true
+                val side = data.getString("side")
+
+                Log.v("fff", "@@@ $side $cameraPose")
+
+                if (side.equals(cameraPose)) {
+                    val scanId = data.getString("id")
+                    currentScanID = scanId
+                    startCmdReceived = true
+                }
             } catch (e: JSONException) {
                 println("onStart: JSONException")
                 return@Listener
@@ -96,8 +102,19 @@ class NetworkInterface(
         }
 
         onStop = Emitter.Listener { args ->
-            println("Stop recording")
-            stopCmdReceived = true
+            val data = args[0] as JSONObject
+
+            try {
+                val side = data.getString("side")
+
+                if (side.equals(cameraPose)) {
+                    println("Stop recording")
+                    stopCmdReceived = true
+                }
+            } catch (e: JSONException) {
+                println("onStart: JSONException")
+                return@Listener
+            }
         }
 
         mSocket?.on("config", onConfig);

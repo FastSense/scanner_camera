@@ -89,7 +89,7 @@ class VideoConfig (pref: SharedPreferences) {
         previewWidth = previewWidthI
         previewHeight = previewHeightI
 
-        print()
+        saveSharedPref()
     }
 
     fun getSize (): Size {
@@ -98,12 +98,14 @@ class VideoConfig (pref: SharedPreferences) {
 
     fun saveSharedPref () {
         val editor = sharedPref.edit()
-        editor.putInt("iso", iso).apply()
-        editor.putLong("exposure", exposure).apply()
-        editor.putInt("preview_fps", previewFps).apply()
-        editor.putInt("preview_quality", previewQuality).apply()
-        editor.putInt("preview_width", previewWidth).apply()
-        editor.putInt("preview_height", previewHeight).apply()
+        editor
+            .putInt("iso", iso)
+            .putLong("exposure", exposure)
+            .putInt("preview_fps", previewFps)
+            .putInt("preview_quality", previewQuality)
+            .putInt("preview_width", previewWidth)
+            .putInt("preview_height", previewHeight)
+            .apply()
     }
 }
 

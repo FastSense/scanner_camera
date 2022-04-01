@@ -109,6 +109,7 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         createCameraPreviewSession(false)
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     fun getPreviewImage(): String {
 
         if (mImageView.surfaceTexture == null) {
@@ -117,23 +118,29 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         }
 
 
-        var s: String
+        val s: String
         val view = mImageView
 
-        if (view.bitmap == null) {
+        s = if (view.bitmap == null) {
             Log.i(LOG_TAG, "error! getPreviewImage view.bitmap = null")
-            s = base64DefString
+            base64DefString
         } else {
-            var b: Bitmap = getResizedBitmap(
+            val b: Bitmap = getResizedBitmap(
                 view.bitmap!!,
                 videoConfig.previewWidth,
                 videoConfig.previewHeight
             )
 
             val baos = ByteArrayOutputStream()
-            b.compress(Bitmap.CompressFormat.JPEG, videoConfig.previewQuality, baos)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                b.compress(
+                    Bitmap.CompressFormat.WEBP_LOSSY,
+                    videoConfig.previewQuality,
+                    baos
+                )
+            }
             val imageBytes: ByteArray = baos.toByteArray()
-            s = Base64.encodeToString(imageBytes, Base64.DEFAULT)
+            Base64.encodeToString(imageBytes, Base64.DEFAULT)
         }
         return s
 
@@ -321,10 +328,10 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         mMediaRecorder?.setOrientationHint(90);
         val mCurrentFile = File(outputDirectory, "$file_name.mp4")
 
-        mMediaRecorder?.setOutputFile(mCurrentFile.getAbsolutePath())
+        mMediaRecorder?.setOutputFile(mCurrentFile.absolutePath)
 
 
-        Log.i(LOG_TAG, mCurrentFile.getAbsolutePath())
+        Log.i(LOG_TAG, mCurrentFile.absolutePath)
 
 
         try {

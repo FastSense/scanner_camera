@@ -7,6 +7,7 @@ import android.os.CountDownTimer
 import java.util.*
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.pm.ActivityInfo
 
 import androidx.annotation.RequiresApi
@@ -20,8 +21,16 @@ import android.graphics.SurfaceTexture
 
 import androidx.core.content.ContextCompat
 import android.view.TextureView
+import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import android.widget.Button
+import android.widget.EditText
+import android.widget.RadioGroup
+import androidx.cardview.widget.CardView
 import com.google.android.material.chip.Chip
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import kotlinx.android.synthetic.main.activity_main.*
 import java.text.SimpleDateFormat
 
 
@@ -31,6 +40,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var chipCameraLoc: Chip
     private lateinit var fabSettings: FloatingActionButton
 
+    private lateinit var cardSettings: CardView
+    private lateinit var inputCameraName: EditText
+    private lateinit var inputServerUri: EditText
+    private lateinit var radioSide: RadioGroup
+    private lateinit var btnSubmit: Button
+    private lateinit var btnCancel: Button
 
     private var counter: Int = 0
     private lateinit var pingTimer: CountDownTimer
@@ -72,6 +87,13 @@ class MainActivity : AppCompatActivity() {
         chipCameraLoc = findViewById(R.id.chip_cam_loc)
         fabSettings = findViewById(R.id.fab_settings)
 
+        cardSettings = findViewById(R.id.card_settings)
+        inputCameraName = findViewById(R.id.input_cam_name)
+        inputServerUri = findViewById(R.id.input_server_uri)
+        radioSide = findViewById(R.id.radio_side_group)
+        btnCancel = findViewById(R.id.btn_settings_cancel)
+        btnSubmit = findViewById(R.id.btn_settings_submit)
+
         myTextureView = findViewById(R.id.textureView)
 
         myTextureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
@@ -89,6 +111,71 @@ class MainActivity : AppCompatActivity() {
 
             override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
         }
+
+        fabSettings.setOnClickListener { showCardSettings() }
+        btnSubmit.setOnClickListener { submitCardSettings() }
+        btnCancel.setOnClickListener { hideCardSettings() }
+
+
+        val commonPref = getSharedPreferences("common", MODE_PRIVATE)
+        val cameraPose = commonPref.getString("cameraPose", "left")!!
+
+        chipCameraLoc.setText(when (cameraPose) {
+            "left" -> R.string.cam_loc_left
+            "right" -> R.string.cam_loc_right
+            else -> R.string.cam_loc_right
+        })
+    }
+
+    private fun showCardSettings() {
+        cardSettings.visibility = View.VISIBLE;
+        inputCameraName.setText(netIff.cameraName)
+        inputServerUri.setText(netIff.serverURI)
+        radioSide.check(when (netIff.cameraPose) {
+            "left" -> R.id.radio_side_left
+            "right" -> R.id.radio_side_right
+            else -> R.id.radio_side_left
+        })
+    }
+
+    private fun submitCardSettings() {
+        hideCardSettings()
+
+        netIff.cameraName = inputCameraName.text.toString()
+        netIff.cameraPose = when (radioSide.checkedRadioButtonId) {
+            R.id.radio_side_left -> "left"
+            R.id.radio_side_right -> "right"
+            else -> "left"
+        }
+
+        if (netIff.serverURI != inputServerUri.text.toString()) {
+            netIff.serverURI = inputServerUri.text.toString()
+            netIff.connectToSocketServer()
+        }
+
+        chipCameraLoc.setText(when (radioSide.checkedRadioButtonId) {
+            R.id.radio_side_left -> R.string.cam_loc_left
+            R.id.radio_side_right -> R.string.cam_loc_right
+            else -> R.string.cam_loc_right
+        })
+
+        val networkPrefEditor = getSharedPreferences("network", MODE_PRIVATE).edit()
+        val commonPrefEditor = getSharedPreferences("common", MODE_PRIVATE).edit()
+
+        networkPrefEditor
+            .putString("serverURI", netIff.serverURI)
+            .apply()
+
+        commonPrefEditor
+            .putString("cameraName", netIff.cameraName)
+            .putString("cameraPose", netIff.cameraPose)
+            .apply()
+    }
+
+    private fun hideCardSettings() {
+        cardSettings.visibility = View.INVISIBLE
+        val inputMethodManager = getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(textureView.windowToken, 0)
     }
 
     fun setupNetwork() {
@@ -103,8 +190,8 @@ class MainActivity : AppCompatActivity() {
         netIff.init()
     }
 
-    fun setupTimer() {
-        pingTimer = object : CountDownTimer(500000, (1/videoConfig.previewFps.toFloat() * 1000).toLong()) {
+    private fun setupTimer() {
+        pingTimer = object : CountDownTimer(500000, 100) {
             @RequiresApi(Build.VERSION_CODES.S)
             override fun onTick(millisUntilFinished: Long) {
                 if (cameraReady) {
@@ -151,26 +238,22 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SimpleDateFormat")
     @RequiresApi(Build.VERSION_CODES.S)
     fun startRecordVideo (scanId: String) {
-        val side = getString(R.string.cam_pose)
-        val sdf = SimpleDateFormat("dd_hh_mm_ss")
-        val currentDate = sdf.format(Date())
+        val currentDate = SimpleDateFormat("dd-hh-mm-ss").format(Date())
 
         if (!recordingVideo) {
-            myCamera!!.startRecordVideo("${side}_${currentDate}_${scanId}")
-
             recordingVideo = true
             startTimeMs = System.currentTimeMillis()
-
             updateRecordingState()
+
+            myCamera!!.startRecordVideo("$scanId--${currentDate}")
         }
     }
 
     fun stopRecordVideo () {
-        chipRecStatus.setText(R.string.rec_status_recording)
-        myCamera!!.stopRecordVideo()
         recordingVideo = false
-
         updateRecordingState()
+
+        myCamera!!.stopRecordVideo()
     }
 
     private fun updateRecordingState() {
