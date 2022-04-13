@@ -137,6 +137,8 @@ class NetworkInterface(
         status_map["videoConfig"] = videoConfig.map()
         status_map["videoDuration"] = videoDuration
         status_map["frame"] = image_str
+        status_map["name"] = cameraName
+        status_map["side"] = cameraPose
 
         val statusJson = JSONObject(status_map as Map<String, Any>?)
         mSocket?.emit("status", statusJson);

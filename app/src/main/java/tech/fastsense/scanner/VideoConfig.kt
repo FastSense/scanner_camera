@@ -14,7 +14,7 @@ class VideoConfig (pref: SharedPreferences) {
     var iso: Int = 500
     var exposure: Long = 10000000 // in nanoseconds
     var previewFps: Int = 10
-    var previewQuality: Int = 30
+    var previewQuality: Int = 15
     var previewWidth: Int = 216
     var previewHeight: Int = 384
 
