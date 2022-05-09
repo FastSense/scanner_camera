@@ -66,7 +66,9 @@ class CameraService(context: Context, videoConfig: VideoConfig,
     private var mBackgroundThread: HandlerThread? = null
     private var mBackgroundHandler: Handler? = null
 
-    private var mMediaRecorder: MediaRecorder? = null
+    private var mMediaRecorder1: MediaRecorder? = null
+
+    private var mMediaRecorder2: MediaRecorder? = null
 
     private fun startBackgroundThread() {
         mBackgroundThread = HandlerThread("CameraBackground")
@@ -144,10 +146,12 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
     @RequiresApi(Build.VERSION_CODES.S)
     fun startRecordVideo(file_name: String) {
-        if (setUpMediaRecorder(file_name) == 0) {
-            createCameraPreviewSession(true)
-            mMediaRecorder?.start()
-        }
+        mMediaRecorder1 = setUpMediaRecorder("$file_name--4K", CamcorderProfile.QUALITY_2160P)
+        mMediaRecorder2 = setUpMediaRecorder("$file_name--low", CamcorderProfile.QUALITY_720P)
+
+        createCameraPreviewSession(true)
+        mMediaRecorder1?.start()
+        mMediaRecorder2?.start()
     }
 
     fun stopRecordVideo() {
@@ -156,8 +160,11 @@ class CameraService(context: Context, videoConfig: VideoConfig,
             mCaptureSession.abortCaptures()
             mCaptureSession.close()
 
-            mMediaRecorder!!.stop()
-            mMediaRecorder!!.release()
+            mMediaRecorder1!!.stop()
+            mMediaRecorder1!!.release()
+
+            mMediaRecorder2!!.stop()
+            mMediaRecorder2!!.release()
             createCameraPreviewSession(false)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
@@ -221,12 +228,16 @@ class CameraService(context: Context, videoConfig: VideoConfig,
             builder.set(CaptureRequest.SENSOR_SENSITIVITY, videoConfig.iso)
 
             if (record_video) {
-                val recorderSurface = mMediaRecorder?.surface
-                if (recorderSurface != null) {
-                    builder.addTarget(recorderSurface)
+                val recorderSurface1 = mMediaRecorder1?.surface
+                val recorderSurface2 = mMediaRecorder2?.surface
+                if (recorderSurface1 != null) {
+                    builder.addTarget(recorderSurface1)
+                }
+                if (recorderSurface2 != null) {
+                    builder.addTarget(recorderSurface2)
                 }
                 mCameraDevice!!.createCaptureSession(
-                    listOf(surface, mMediaRecorder?.surface),
+                    listOf(surface, mMediaRecorder1?.surface, mMediaRecorder2?.surface),
                     object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             mCaptureSession = session
@@ -306,39 +317,38 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
     // return 0 on ok, -1 on error
     @RequiresApi(Build.VERSION_CODES.S)
-    private fun setUpMediaRecorder(file_name: String): Int {
+    private fun setUpMediaRecorder(file_name: String, p: Int): MediaRecorder {
 
-        val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_2160P)
+        val profile = CamcorderProfile.get(p)
 
-        mMediaRecorder = MediaRecorder()
-        mMediaRecorder?.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-        mMediaRecorder?.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        val mMediaRecorder = MediaRecorder()
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
 
-        mMediaRecorder?.setVideoEncodingBitRate(profile.videoBitRate)
+        mMediaRecorder.setVideoEncodingBitRate(profile.videoBitRate)
 
 
-        mMediaRecorder?.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-        mMediaRecorder?.setVideoFrameRate(profile.videoFrameRate)
-        mMediaRecorder?.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight)
+        mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+        mMediaRecorder.setVideoFrameRate(30)
+        mMediaRecorder.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight)
 
-        mMediaRecorder?.setOrientationHint(90);
+        mMediaRecorder.setOrientationHint(90);
         val mCurrentFile = File(outputDirectory, "$file_name.mp4")
 
-        mMediaRecorder?.setOutputFile(mCurrentFile.absolutePath)
+        mMediaRecorder.setOutputFile(mCurrentFile.absolutePath)
 
 
         Log.i(LOG_TAG, mCurrentFile.absolutePath)
 
 
         try {
-            mMediaRecorder?.prepare()
+            mMediaRecorder.prepare()
             Log.i(LOG_TAG, "mMediaRecorder started OK")
         } catch (e: Exception) {
             e.printStackTrace()
             Log.i(LOG_TAG, "mMediaRecorder failed to start")
-            return -1
         }
-        return 0
+        return mMediaRecorder
     }
 
 }
