@@ -79,8 +79,13 @@ class NetworkInterface(
 
         onConfig = Emitter.Listener { args ->
             val data = args[0] as JSONObject
-            videoConfig.fromJson(data)
-            configUpdated = true
+
+            val side = data.getString("side")
+
+            if (side.equals(cameraPose)) {
+                videoConfig.fromJson(data)
+                configUpdated = true
+            }
         }
 
         onStart = Emitter.Listener { args ->
