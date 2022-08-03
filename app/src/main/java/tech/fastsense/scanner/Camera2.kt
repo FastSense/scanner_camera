@@ -3,8 +3,6 @@ package tech.fastsense.scanner
 import android.content.Context
 import androidx.annotation.RequiresApi
 
-import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraManager
 import android.util.Log
 
 
@@ -20,12 +18,9 @@ import android.graphics.*
 import java.io.ByteArrayOutputStream
 
 import android.graphics.Bitmap
-import android.hardware.camera2.CameraCaptureSession
-
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CaptureRequest
 
 import android.graphics.SurfaceTexture
+import android.hardware.camera2.*
 import android.view.Surface
 import android.view.TextureView
 import android.media.MediaRecorder
@@ -219,6 +214,14 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
             builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, videoConfig.exposure)
             builder.set(CaptureRequest.SENSOR_SENSITIVITY, videoConfig.iso)
+
+
+            if ("manual" == videoConfig.focusMode) {
+                builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
+                builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, 1f / videoConfig.focusDistance)
+            } else {
+                // ...
+            }
 
             if (record_video) {
                 val recorderSurface = mMediaRecorder?.surface

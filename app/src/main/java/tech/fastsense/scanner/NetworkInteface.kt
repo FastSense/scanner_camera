@@ -134,18 +134,18 @@ class NetworkInterface(
 
 
     fun sendStatus(cameraState: String, timeFromStart: Long, image_str: String) {
-        val status_map = HashMap<String, Any>()
+        val statusMap = HashMap<String, Any>()
 
         val videoDuration: Int = if (cameraState == "ready") 0 else timeFromStart.toInt()
 
-        status_map["cameraState"] = cameraState
-        status_map["videoConfig"] = videoConfig.map()
-        status_map["videoDuration"] = videoDuration
-        status_map["frame"] = image_str
-        status_map["name"] = cameraName
-        status_map["side"] = cameraPose
+        statusMap["cameraState"] = cameraState
+        statusMap["videoConfig"] = videoConfig.map()
+        statusMap["videoDuration"] = videoDuration
+        statusMap["frame"] = image_str
+        statusMap["name"] = cameraName
+        statusMap["side"] = cameraPose
 
-        val statusJson = JSONObject(status_map as Map<String, Any>?)
+        val statusJson = JSONObject(statusMap as Map<String, Any>?)
         mSocket?.emit("status", statusJson);
     }
 

@@ -17,6 +17,8 @@ class VideoConfig (pref: SharedPreferences) {
     var previewQuality: Int = 15
     var previewWidth: Int = 216
     var previewHeight: Int = 384
+    var focusMode: String = "auto"
+    var focusDistance: Float = 1.3f
 
     private var sharedPref: SharedPreferences = pref
 
@@ -27,6 +29,8 @@ class VideoConfig (pref: SharedPreferences) {
         previewQuality = sharedPref.getInt("preview_quality", 30)
         previewWidth = sharedPref.getInt("preview_width", 216)
         previewHeight = sharedPref.getInt("preview_height", 384)
+        focusMode = sharedPref.getString("focus_mode", "auto")!!
+        focusDistance = sharedPref.getFloat("focus_distance", 1.3f)
     }
 
     private fun print () {
@@ -51,6 +55,8 @@ class VideoConfig (pref: SharedPreferences) {
         videoConfig["previewResolution"] = previewResolution
         videoConfig["previewFps"] = previewFps
         videoConfig["previewQuality"] = previewQuality
+        videoConfig["focusMode"] = focusMode
+        videoConfig["focusDistance"] = focusDistance
 
         return videoConfig
     }
@@ -66,6 +72,8 @@ class VideoConfig (pref: SharedPreferences) {
         val previewWidthI: Int
         val previewHeightI: Int
         val previewResolutionI: JSONObject
+        val focusModeI : String
+        val focusDistanceI: Float
 
         try {
             fullResolutionI = if (data.getString("fullResolution") == "4k") FullResolution.FOURK else FullResolution.FULLHD
@@ -76,6 +84,8 @@ class VideoConfig (pref: SharedPreferences) {
             previewResolutionI = data.get("previewResolution") as JSONObject
             previewWidthI = previewResolutionI.getInt("width")
             previewHeightI = previewResolutionI.getInt("height")
+            focusModeI = data.getString("focusMode")
+            focusDistanceI = data.getDouble("focusDistance").toFloat()
         } catch (e: JSONException) {
             println("VideoConfig.fromJson: JSONException")
             return
@@ -88,6 +98,8 @@ class VideoConfig (pref: SharedPreferences) {
         previewQuality = previewQualityI
         previewWidth = previewWidthI
         previewHeight = previewHeightI
+        focusMode = focusModeI
+        focusDistance = focusDistanceI
 
         saveSharedPref()
     }
@@ -96,7 +108,7 @@ class VideoConfig (pref: SharedPreferences) {
         return Size(previewWidth, previewHeight)
     }
 
-    fun saveSharedPref () {
+    private fun saveSharedPref () {
         val editor = sharedPref.edit()
         editor
             .putInt("iso", iso)
@@ -105,6 +117,8 @@ class VideoConfig (pref: SharedPreferences) {
             .putInt("preview_quality", previewQuality)
             .putInt("preview_width", previewWidth)
             .putInt("preview_height", previewHeight)
+            .putString("focus_mode", focusMode)
+            .putFloat("focus_distance", focusDistance)
             .apply()
     }
 }
