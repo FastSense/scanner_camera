@@ -9,7 +9,7 @@ enum class FullResolution {
     FOURK, FULLHD
 }
 
-class VideoConfig (pref: SharedPreferences) {
+class VideoConfig(pref: SharedPreferences) {
     var fullResolution: FullResolution = FullResolution.FOURK
     var iso: Int = 500
     var exposure: Long = 10000000 // in nanoseconds
@@ -33,7 +33,7 @@ class VideoConfig (pref: SharedPreferences) {
         focusDistance = sharedPref.getFloat("focus_distance", 1.3f)
     }
 
-    private fun print () {
+    private fun print() {
         println("fullResolution = $fullResolution")
         println("iso = $iso")
         println("exposure = $exposure")
@@ -43,11 +43,12 @@ class VideoConfig (pref: SharedPreferences) {
         println("preview_height = $previewHeight")
     }
 
-    fun map (): HashMap<String, Any> {
+    fun map(): HashMap<String, Any> {
         val videoConfig = HashMap<String, Any>()
         val previewResolution = HashMap<String, Int>()
 
-        videoConfig["fullResolution"] = if (fullResolution == FullResolution.FOURK) "4k" else "fullhd"
+        videoConfig["fullResolution"] =
+            if (fullResolution == FullResolution.FOURK) "4k" else "fullhd"
         videoConfig["iso"] = iso
         videoConfig["exposure"] = (1000000000 / exposure.toDouble()).toInt()
         previewResolution["width"] = previewWidth
@@ -61,7 +62,7 @@ class VideoConfig (pref: SharedPreferences) {
         return videoConfig
     }
 
-    fun fromJson (data: JSONObject) {
+    fun fromJson(data: JSONObject) {
         println("VideoConfig: $data")
 
         val fullResolutionI: FullResolution
@@ -72,11 +73,12 @@ class VideoConfig (pref: SharedPreferences) {
         val previewWidthI: Int
         val previewHeightI: Int
         val previewResolutionI: JSONObject
-        val focusModeI : String
+        val focusModeI: String
         val focusDistanceI: Float
 
         try {
-            fullResolutionI = if (data.getString("fullResolution") == "4k") FullResolution.FOURK else FullResolution.FULLHD
+            fullResolutionI =
+                if (data.getString("fullResolution") == "4k") FullResolution.FOURK else FullResolution.FULLHD
             isoI = data.getInt("iso")
             exposureI = data.getLong("exposure")
             previewFpsI = data.getInt("previewFps")
@@ -92,7 +94,7 @@ class VideoConfig (pref: SharedPreferences) {
         }
         fullResolution = fullResolutionI
         iso = isoI
-        val dt: Double = 1/exposureI.toDouble()   // in sec
+        val dt: Double = 1 / exposureI.toDouble()   // in sec
         exposure = (dt * 1000000000).toLong()     // in nanoseconds
         previewFps = previewFpsI
         previewQuality = previewQualityI
@@ -104,11 +106,11 @@ class VideoConfig (pref: SharedPreferences) {
         saveSharedPref()
     }
 
-    fun getSize (): Size {
+    fun getSize(): Size {
         return Size(previewWidth, previewHeight)
     }
 
-    private fun saveSharedPref () {
+    private fun saveSharedPref() {
         val editor = sharedPref.edit()
         editor
             .putInt("iso", iso)

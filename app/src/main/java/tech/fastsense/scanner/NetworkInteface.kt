@@ -1,5 +1,6 @@
 package tech.fastsense.scanner
 
+import android.os.Build
 import android.util.Log
 import java.util.*
 
@@ -21,9 +22,9 @@ class HostCmd(iCmd: CmdName, iParam: String) {
 }
 
 class NetworkInterface(
-    public var serverURI: String,
-    public var cameraName: String,
-    public var cameraPose: String,
+    var serverURI: String,
+    var cameraName: String,
+    var cameraPose: String,
     private var videoConfig: VideoConfig
 ) {
     private var mSocket: Socket? = null
@@ -39,18 +40,10 @@ class NetworkInterface(
     private lateinit var currentScanID: String
 
     fun init() {
-        val pingPayloadMap = HashMap<String, String>()
-        pingPayloadMap["name"] = cameraName
-        pingPayloadMap["cameraPosition"] = cameraPose
-
         connectToSocketServer()
     }
 
-    fun postPingRequest() {
-    }
-
-
-    fun newCommand (): HostCmd {
+    fun getNewCommand(): HostCmd {
         return when {
             configUpdated -> {
                 configUpdated = false
@@ -133,7 +126,7 @@ class NetworkInterface(
     }
 
 
-    fun sendStatus(cameraState: String, timeFromStart: Long, image_str: String) {
+    fun sendStatus(cameraState: String, timeFromStart: Long, image_str: String, batteryStatus: Map<String, Any>) {
         val statusMap = HashMap<String, Any>()
 
         val videoDuration: Int = if (cameraState == "ready") 0 else timeFromStart.toInt()
@@ -144,6 +137,10 @@ class NetworkInterface(
         statusMap["frame"] = image_str
         statusMap["name"] = cameraName
         statusMap["side"] = cameraPose
+
+        statusMap["versionName"] = BuildConfig.VERSION_NAME
+        statusMap["battery"] = batteryStatus
+        statusMap["model"] = Build.MODEL
 
         val statusJson = JSONObject(statusMap as Map<String, Any>?)
         mSocket?.emit("status", statusJson);

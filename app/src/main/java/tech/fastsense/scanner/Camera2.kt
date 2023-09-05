@@ -33,9 +33,10 @@ import android.os.HandlerThread
 import java.lang.IllegalStateException
 
 
-class CameraService(context: Context, videoConfig: VideoConfig,
-                    cameraManager: CameraManager, cameraID: String,
-                    imageView: TextureView
+class CameraService(
+    context: Context, videoConfig: VideoConfig,
+    cameraManager: CameraManager, cameraID: String,
+    imageView: TextureView
 ) {
 
     private lateinit var outputDirectory: File
@@ -202,7 +203,7 @@ class CameraService(context: Context, videoConfig: VideoConfig,
         val texture: SurfaceTexture? = mImageView.surfaceTexture
         println("createCameraPreviewSession 0 ${mImageView} ${texture}")
 //        return
-        texture?.setDefaultBufferSize(3840,2160);
+        texture?.setDefaultBufferSize(3840, 2160);
         val surface = Surface(texture)
         println("createCameraPreviewSession 1")
 //        return
@@ -270,7 +271,6 @@ class CameraService(context: Context, videoConfig: VideoConfig,
             }
 
 
-
         } catch (e: CameraAccessException) {
             e.printStackTrace()
         }
@@ -286,18 +286,22 @@ class CameraService(context: Context, videoConfig: VideoConfig,
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
-            (context as MainActivity).baseContext, it) == PackageManager.PERMISSION_GRANTED
+            (context as MainActivity).baseContext, it
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun getOutputDirectory(): File {
         val mediaDir = (context as MainActivity).externalMediaDirs.firstOrNull()?.let {
-            File(it, (context as MainActivity).resources.getString(R.string.app_name)).apply { mkdirs() } }
+            File(
+                it,
+                (context as MainActivity).resources.getString(R.string.app_name)
+            ).apply { mkdirs() }
+        }
 
         Log.v("AAA", "@@@ $mediaDir")
         return if (mediaDir != null && mediaDir.exists())
             mediaDir else (context as MainActivity).filesDir
     }
-
 
 
     companion object {

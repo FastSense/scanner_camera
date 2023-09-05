@@ -1,25 +1,21 @@
 package tech.fastsense.scanner
 
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.widget.TextView
-import android.os.CountDownTimer
-import java.util.*
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ActivityInfo
-
-import androidx.annotation.RequiresApi
-
-import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraManager
-import android.os.Build
-import android.util.Log
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
-
-import androidx.core.content.ContextCompat
+import android.hardware.camera2.CameraAccessException
+import android.hardware.camera2.CameraManager
+import android.os.BatteryManager
+import android.os.Build
+import android.os.Bundle
+import android.os.CountDownTimer
+import android.util.Log
+import android.view.MotionEvent
 import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
@@ -27,11 +23,19 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.RadioGroup
+import android.widget.TextView
+import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import com.google.android.material.chip.Chip
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.android.synthetic.main.activity_main.*
+import pub.devrel.easypermissions.AfterPermissionGranted
+import pub.devrel.easypermissions.EasyPermissions
 import java.text.SimpleDateFormat
+import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -47,7 +51,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSubmit: Button
     private lateinit var btnCancel: Button
 
-    private var counter: Int = 0
     private lateinit var pingTimer: CountDownTimer
     private lateinit var netIff: NetworkInterface
 
@@ -57,14 +60,21 @@ class MainActivity : AppCompatActivity() {
 
     private var startTimeMs: Long = System.currentTimeMillis()
 
+    private var lastTapMs: Long = System.currentTimeMillis()
+
     private lateinit var mCameraManager: CameraManager
     private var cameraReady = false
 
     private var myCamera: CameraService? = null
 
-    private val TAG = "myLogs"
-
     private var recordingVideo: Boolean = false
+
+
+    companion object {
+        const val PERMISSIONS_REQUEST_CODE = 837
+        const val TAG = "MainActivity"
+    }
+
 
     @SuppressLint("SourceLockedOrientationActivity")
     @RequiresApi(Build.VERSION_CODES.S)
@@ -74,8 +84,36 @@ class MainActivity : AppCompatActivity() {
         videoConfig = VideoConfig(getSharedPreferences("videoConfig", MODE_PRIVATE))
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-        setupViews()
         setupTimer()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    override fun onResume() {
+        super.onResume()
+
+        requestPermissions {
+            setupViews()
+            setupScreen()
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupScreen() {
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        findViewById<ConstraintLayout>(R.id.main_layout).setOnTouchListener { _, e ->
+            if (e.action == MotionEvent.ACTION_DOWN) {
+                lastTapMs = System.currentTimeMillis()
+            }
+            true
+        }
+
+
+    }
+
+    private fun setScreenBrightness(b: Float) {
+        val lp = window.attributes
+        lp.screenBrightness = b
+        window.attributes = lp
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -97,14 +135,25 @@ class MainActivity : AppCompatActivity() {
         myTextureView = findViewById(R.id.textureView)
 
         myTextureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+            override fun onSurfaceTextureAvailable(
+                surface: SurfaceTexture,
+                width: Int,
+                height: Int
+            ) {
                 setupCamera()
                 Log.i(TAG, "Opening camera")
                 myCamera?.openCamera()
                 Log.i(TAG, "Camera ready")
                 cameraReady = true
             }
-            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+
+            override fun onSurfaceTextureSizeChanged(
+                surface: SurfaceTexture,
+                width: Int,
+                height: Int
+            ) {
+            }
+
             override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
                 return false
             }
@@ -120,22 +169,28 @@ class MainActivity : AppCompatActivity() {
         val commonPref = getSharedPreferences("common", MODE_PRIVATE)
         val cameraPose = commonPref.getString("cameraPose", "left")!!
 
-        chipCameraLoc.setText(when (cameraPose) {
-            "left" -> R.string.cam_loc_left
-            "right" -> R.string.cam_loc_right
-            else -> R.string.cam_loc_right
-        })
+        chipCameraLoc.setText(
+            when (cameraPose) {
+                "left" -> R.string.cam_loc_left
+                "right" -> R.string.cam_loc_right
+                else -> R.string.cam_loc_right
+            }
+        )
+
+        findViewById<TextView>(R.id.textView_version_name).text = BuildConfig.VERSION_NAME
     }
 
     private fun showCardSettings() {
         cardSettings.visibility = View.VISIBLE;
         inputCameraName.setText(netIff.cameraName)
         inputServerUri.setText(netIff.serverURI)
-        radioSide.check(when (netIff.cameraPose) {
-            "left" -> R.id.radio_side_left
-            "right" -> R.id.radio_side_right
-            else -> R.id.radio_side_left
-        })
+        radioSide.check(
+            when (netIff.cameraPose) {
+                "left" -> R.id.radio_side_left
+                "right" -> R.id.radio_side_right
+                else -> R.id.radio_side_left
+            }
+        )
     }
 
     private fun submitCardSettings() {
@@ -153,11 +208,13 @@ class MainActivity : AppCompatActivity() {
             netIff.connectToSocketServer()
         }
 
-        chipCameraLoc.setText(when (radioSide.checkedRadioButtonId) {
-            R.id.radio_side_left -> R.string.cam_loc_left
-            R.id.radio_side_right -> R.string.cam_loc_right
-            else -> R.string.cam_loc_right
-        })
+        chipCameraLoc.setText(
+            when (radioSide.checkedRadioButtonId) {
+                R.id.radio_side_left -> R.string.cam_loc_left
+                R.id.radio_side_right -> R.string.cam_loc_right
+                else -> R.string.cam_loc_right
+            }
+        )
 
         val networkPrefEditor = getSharedPreferences("network", MODE_PRIVATE).edit()
         val commonPrefEditor = getSharedPreferences("common", MODE_PRIVATE).edit()
@@ -174,15 +231,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun hideCardSettings() {
         cardSettings.visibility = View.INVISIBLE
-        val inputMethodManager = getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        val inputMethodManager =
+            getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.hideSoftInputFromWindow(textureView.windowToken, 0)
     }
 
-    fun setupNetwork() {
+    private fun setupNetwork() {
         val networkPref = getSharedPreferences("network", MODE_PRIVATE)
         val commonPref = getSharedPreferences("common", MODE_PRIVATE)
 
-        val serverURI = networkPref.getString("serverURI", "http://192.168.118.243:8000")!!
+        val serverURI = networkPref.getString("serverURI", "http://192.168.123.123:80")!!
         val cameraName = commonPref.getString("cameraName", "scanner camera")!!
         val cameraPose = commonPref.getString("cameraPose", "left")!!
 
@@ -195,18 +253,20 @@ class MainActivity : AppCompatActivity() {
             @RequiresApi(Build.VERSION_CODES.S)
             override fun onTick(millisUntilFinished: Long) {
                 if (cameraReady) {
-                    var currentTimeMs: Long = System.currentTimeMillis()
+                    val currentTimeMs: Long = System.currentTimeMillis()
 
                     updateConnectionState()
                     updateRecordingState()
 
                     val cameraState: String = if (recordingVideo) "recording" else "ready"
-                    netIff.sendStatus(cameraState, (currentTimeMs - startTimeMs) / 1000, myCamera!!.getPreviewImage())
+                    netIff.sendStatus(
+                        cameraState,
+                        (currentTimeMs - startTimeMs) / 1000,
+                        myCamera!!.getPreviewImage(),
+                        getBatteryStatus(),
+                    )
 
-                    if (counter % 5 == 0)
-                        netIff.postPingRequest()
-
-                    val hostCmd = netIff.newCommand()
+                    val hostCmd = netIff.getNewCommand()
 
                     when (hostCmd.cmd) {
                         CmdName.SetConfig -> {
@@ -225,8 +285,10 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 }
-                ++counter
+
+                setScreenBrightness(if (System.currentTimeMillis() - lastTapMs > 30_000 && cardSettings.visibility != View.VISIBLE) 0.05f else 0.85f)
             }
+
             override fun onFinish() {
                 this.start() //start again the CountDownTimer
             }
@@ -235,9 +297,31 @@ class MainActivity : AppCompatActivity() {
         pingTimer.start()
     }
 
+    private fun getBatteryStatus(): Map<String, Any> {
+        val b: Intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))!!
+
+        val status: Int = b.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val isCharging: Boolean = status == BatteryManager.BATTERY_STATUS_CHARGING
+                || status == BatteryManager.BATTERY_STATUS_FULL
+
+        val batteryPct: Float = b.let { intent ->
+            val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            level * 100 / scale.toFloat()
+        }
+
+        val temperature: Float = b.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) / 10F
+
+        return mapOf(
+            "isCharging" to isCharging,
+            "percent" to batteryPct,
+            "temperature" to temperature,
+        )
+    }
+
     @SuppressLint("SimpleDateFormat")
     @RequiresApi(Build.VERSION_CODES.S)
-    fun startRecordVideo (scanId: String) {
+    fun startRecordVideo(scanId: String) {
         val currentDate = SimpleDateFormat("dd-hh-mm-ss").format(Date())
 
         if (!recordingVideo) {
@@ -249,7 +333,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun stopRecordVideo () {
+    fun stopRecordVideo() {
         recordingVideo = false
         updateRecordingState()
 
@@ -281,35 +365,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     // camera2
+    @AfterPermissionGranted(PERMISSIONS_REQUEST_CODE)
+    private fun requestPermissions(callback: () -> Unit) {
+        val perms = arrayOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+        )
 
-    fun setupCamera() {
-
-        Log.d(TAG, "Запрашиваем разрешение")
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                this@MainActivity,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-            ||
-            ContextCompat.checkSelfPermission(
-                this@MainActivity,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(
-                    Manifest.permission.CAMERA,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.RECORD_AUDIO
-                ), 1
+        if (EasyPermissions.hasPermissions(this, *perms)) {
+            callback()
+        } else {
+            EasyPermissions.requestPermissions(
+                this,
+                "",
+                PERMISSIONS_REQUEST_CODE,
+                *perms
             )
         }
 
+    }
 
-
+    fun setupCamera() {
         mCameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
         try {
-
             // Получение списка камер с устройства
             for (cameraID in mCameraManager.cameraIdList) {
                 Log.i(TAG, "cameraID: $cameraID")
@@ -317,8 +395,14 @@ class MainActivity : AppCompatActivity() {
 
                 // создаем обработчик для камеры
                 if (id == 0) {
-                    Log.i(TAG, "Creating myCamera cameraID=: $cameraID")
-                    myCamera = CameraService(this, videoConfig, mCameraManager, cameraID, myTextureView)
+                    Log.i(TAG, "Creating myCamera cameraID = $cameraID")
+                    myCamera = CameraService(
+                        this,
+                        videoConfig,
+                        mCameraManager,
+                        cameraID,
+                        myTextureView
+                    )
                     setupNetwork()
                 }
             }
