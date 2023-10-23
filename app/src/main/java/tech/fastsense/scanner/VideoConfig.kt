@@ -1,7 +1,10 @@
 package tech.fastsense.scanner
 
 import android.content.SharedPreferences
+import android.util.Log
 import android.util.Size
+import com.google.firebase.crashlytics.ktx.crashlytics
+import com.google.firebase.ktx.Firebase
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -22,6 +25,15 @@ class VideoConfig(pref: SharedPreferences) {
 
     private var sharedPref: SharedPreferences = pref
 
+    companion object {
+        const val LOG_TAG = "Camera2"
+    }
+
+    private fun log(msg: String) {
+        Log.i(LOG_TAG, "@@@ $msg")
+        Firebase.crashlytics.log("$LOG_TAG: msg")
+    }
+
     init {
         iso = sharedPref.getInt("iso", 500)
         exposure = sharedPref.getLong("exposure", 10000000)
@@ -31,16 +43,6 @@ class VideoConfig(pref: SharedPreferences) {
         previewHeight = sharedPref.getInt("preview_height", 384)
         focusMode = sharedPref.getString("focus_mode", "auto")!!
         focusDistance = sharedPref.getFloat("focus_distance", 1.3f)
-    }
-
-    private fun print() {
-        println("fullResolution = $fullResolution")
-        println("iso = $iso")
-        println("exposure = $exposure")
-        println("preview_fps = $previewFps")
-        println("preview_quality = $previewQuality")
-        println("preview_width = $previewWidth")
-        println("preview_height = $previewHeight")
     }
 
     fun map(): HashMap<String, Any> {
@@ -63,7 +65,7 @@ class VideoConfig(pref: SharedPreferences) {
     }
 
     fun fromJson(data: JSONObject) {
-        println("VideoConfig: $data")
+        log("VideoConfig: $data")
 
         val fullResolutionI: FullResolution
         val isoI: Int
@@ -89,7 +91,7 @@ class VideoConfig(pref: SharedPreferences) {
             focusModeI = data.getString("focusMode")
             focusDistanceI = data.getDouble("focusDistance").toFloat()
         } catch (e: JSONException) {
-            println("VideoConfig.fromJson: JSONException")
+            log("VideoConfig.fromJson: JSONException")
             return
         }
         fullResolution = fullResolutionI
@@ -104,10 +106,6 @@ class VideoConfig(pref: SharedPreferences) {
         focusDistance = focusDistanceI
 
         saveSharedPref()
-    }
-
-    fun getSize(): Size {
-        return Size(previewWidth, previewHeight)
     }
 
     private fun saveSharedPref() {

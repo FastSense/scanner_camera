@@ -9,7 +9,6 @@ import android.util.Log
 import android.Manifest
 import android.content.pm.PackageManager
 
-import androidx.core.content.ContextCompat
 import java.io.File
 
 import android.util.Base64
@@ -30,21 +29,19 @@ import android.os.*
 
 import java.lang.Exception
 import android.os.HandlerThread
+import com.google.firebase.crashlytics.ktx.crashlytics
+import com.google.firebase.ktx.Firebase
 import java.lang.IllegalStateException
 
 
 class CameraService(
-    context: Context, videoConfig: VideoConfig,
+    private var context: Context, private var videoConfig: VideoConfig,
     cameraManager: CameraManager, cameraID: String,
     imageView: TextureView
 ) {
 
     private lateinit var outputDirectory: File
 
-
-    private var context: Context = context
-
-    private var videoConfig: VideoConfig = videoConfig
 
     private val base64DefString: String = ""
 
@@ -55,8 +52,6 @@ class CameraService(
 
     private var mImageView: TextureView = imageView
 
-    private val LOG_TAG = "myLogs"
-
     private lateinit var builder: CaptureRequest.Builder
 
     private var mBackgroundThread: HandlerThread? = null
@@ -64,21 +59,13 @@ class CameraService(
 
     private var mMediaRecorder: MediaRecorder? = null
 
-    private fun startBackgroundThread() {
-        mBackgroundThread = HandlerThread("CameraBackground")
-        mBackgroundThread?.start()
-        mBackgroundHandler = mBackgroundThread?.getLooper()?.let { Handler(it) }
+    companion object {
+        const val LOG_TAG = "Camera2"
     }
 
-    private fun stopBackgroundThread() {
-        mBackgroundThread!!.quitSafely()
-        try {
-            mBackgroundThread!!.join()
-            mBackgroundThread = null
-            mBackgroundHandler = null
-        } catch (e: InterruptedException) {
-            e.printStackTrace()
-        }
+    private fun log(msg: String) {
+        Log.i(LOG_TAG, "@@@ $msg")
+        Firebase.crashlytics.log("$LOG_TAG: $msg")
     }
 
     fun getResizedBitmap(bm: Bitmap, newWidth: Int, newHeight: Int): Bitmap {
@@ -107,7 +94,7 @@ class CameraService(
     fun getPreviewImage(): String {
 
         if (mImageView.surfaceTexture == null) {
-            Log.i(LOG_TAG, "error! getPreviewImage surfaceTexture = null")
+            log("error! getPreviewImage surfaceTexture = null")
             return base64DefString
         }
 
@@ -116,7 +103,7 @@ class CameraService(
         val view = mImageView
 
         s = if (view.bitmap == null) {
-            Log.i(LOG_TAG, "error! getPreviewImage view.bitmap = null")
+            log("error! getPreviewImage view.bitmap = null")
             base64DefString
         } else {
             val b: Bitmap = getResizedBitmap(
@@ -164,53 +151,49 @@ class CameraService(
         }
     }
 
-    fun isOpen(): Boolean {
-        return mCameraDevice != null
-    }
-
     private val mCameraCallback: CameraDevice.StateCallback =
         object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
                 mCameraDevice = camera
-                Log.i(LOG_TAG, "Open camera  with id:" + mCameraDevice!!.id)
+                log("Open camera  with id:" + mCameraDevice!!.id)
                 createCameraPreviewSession(false)
             }
 
             override fun onDisconnected(camera: CameraDevice) {
                 mCameraDevice!!.close()
-                Log.i(LOG_TAG, "disconnect camera  with id:" + mCameraDevice!!.id)
+                log("disconnect camera  with id:" + mCameraDevice!!.id)
                 mCameraDevice = null
             }
 
             override fun onError(camera: CameraDevice, error: Int) {
-                Log.i(LOG_TAG, "error! camera id:" + camera.id + " error:" + error)
+                log("error! camera id:" + camera.id + " error:" + error)
             }
         }
 
     fun openCamera() {
         try {
-            if (context.checkSelfPermission(Manifest.permission.CAMERA) === PackageManager.PERMISSION_GRANTED) {
-                println("before mCameraManager.openCamera")
+            if (context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                log("before mCameraManager.openCamera")
                 outputDirectory = getOutputDirectory()
                 mCameraManager.openCamera(mCameraID, mCameraCallback, null)
             }
         } catch (e: CameraAccessException) {
-            Log.i(LOG_TAG, e.message!!)
+            log(e.message!!)
         }
     }
 
-    private fun createCameraPreviewSession(record_video: Boolean) {
+    private fun createCameraPreviewSession(recordVideo: Boolean) {
         val texture: SurfaceTexture? = mImageView.surfaceTexture
-        println("createCameraPreviewSession 0 ${mImageView} ${texture}")
-//        return
-        texture?.setDefaultBufferSize(3840, 2160);
+        log("createCameraPreviewSession 0 $mImageView $texture")
+
+        texture?.setDefaultBufferSize(3840, 2160)
         val surface = Surface(texture)
-        println("createCameraPreviewSession 1")
-//        return
+        log("createCameraPreviewSession 1")
+
         try {
             builder = mCameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             builder.addTarget(surface)
-            println("createCameraPreviewSession 2")
+            log("createCameraPreviewSession 2")
             builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
 
             builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, videoConfig.exposure)
@@ -224,7 +207,7 @@ class CameraService(
                 // ...
             }
 
-            if (record_video) {
+            if (recordVideo) {
                 val recorderSurface = mMediaRecorder?.surface
                 if (recorderSurface != null) {
                     builder.addTarget(recorderSurface)
@@ -276,20 +259,6 @@ class CameraService(
         }
     }
 
-    fun closeCamera() {
-        if (mCameraDevice != null) {
-            mCameraDevice!!.close()
-            mCameraDevice = null
-        }
-    }
-
-
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(
-            (context as MainActivity).baseContext, it
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
     private fun getOutputDirectory(): File {
         val mediaDir = (context as MainActivity).externalMediaDirs.firstOrNull()?.let {
             File(
@@ -303,17 +272,9 @@ class CameraService(
             mediaDir else (context as MainActivity).filesDir
     }
 
-
-    companion object {
-        private const val TAG = "CameraXBasic"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
-    }
-
     // return 0 on ok, -1 on error
     @RequiresApi(Build.VERSION_CODES.S)
-    private fun setUpMediaRecorder(file_name: String): Int {
+    private fun setUpMediaRecorder(fileName: String): Int {
 
         val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_2160P)
 
@@ -328,21 +289,20 @@ class CameraService(
         mMediaRecorder?.setVideoFrameRate(profile.videoFrameRate)
         mMediaRecorder?.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight)
 
-        mMediaRecorder?.setOrientationHint(90);
-        val mCurrentFile = File(outputDirectory, "$file_name.mp4")
+        mMediaRecorder?.setOrientationHint(90)
+        val mCurrentFile = File(outputDirectory, "$fileName.mp4")
 
         mMediaRecorder?.setOutputFile(mCurrentFile.absolutePath)
 
 
-        Log.i(LOG_TAG, mCurrentFile.absolutePath)
-
+        log("File path: ${mCurrentFile.absolutePath}")
 
         try {
             mMediaRecorder?.prepare()
-            Log.i(LOG_TAG, "mMediaRecorder started OK")
+            log("mMediaRecorder started OK")
         } catch (e: Exception) {
             e.printStackTrace()
-            Log.i(LOG_TAG, "mMediaRecorder failed to start")
+            log("mMediaRecorder failed to start")
             return -1
         }
         return 0

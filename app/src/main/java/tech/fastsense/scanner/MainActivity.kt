@@ -6,7 +6,6 @@ import android.app.Activity
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraManager
@@ -28,9 +27,11 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
 import com.google.android.material.chip.Chip
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.crashlytics.ktx.crashlytics
+import com.google.firebase.crashlytics.ktx.setCustomKeys
+import com.google.firebase.ktx.Firebase
 import kotlinx.android.synthetic.main.activity_main.*
 import pub.devrel.easypermissions.AfterPermissionGranted
 import pub.devrel.easypermissions.EasyPermissions
@@ -75,6 +76,10 @@ class MainActivity : AppCompatActivity() {
         const val TAG = "MainActivity"
     }
 
+    private fun log(msg: String) {
+        Log.i(TAG, "@@@ $msg")
+        Firebase.crashlytics.log("${CameraService.LOG_TAG}: $msg")
+    }
 
     @SuppressLint("SourceLockedOrientationActivity")
     @RequiresApi(Build.VERSION_CODES.S)
@@ -106,8 +111,6 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
-
-
     }
 
     private fun setScreenBrightness(b: Float) {
@@ -141,9 +144,9 @@ class MainActivity : AppCompatActivity() {
                 height: Int
             ) {
                 setupCamera()
-                Log.i(TAG, "Opening camera")
+                log("Opening camera")
                 myCamera?.openCamera()
-                Log.i(TAG, "Camera ready")
+                log("Camera ready")
                 cameraReady = true
             }
 
@@ -181,7 +184,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCardSettings() {
-        cardSettings.visibility = View.VISIBLE;
+        cardSettings.visibility = View.VISIBLE
         inputCameraName.setText(netIff.cameraName)
         inputServerUri.setText(netIff.serverURI)
         radioSide.check(
@@ -227,6 +230,12 @@ class MainActivity : AppCompatActivity() {
             .putString("cameraName", netIff.cameraName)
             .putString("cameraPose", netIff.cameraPose)
             .apply()
+
+        Firebase.crashlytics.setCustomKeys {
+            key("serverURI", netIff.serverURI)
+            key("cameraName", netIff.cameraName)
+            key("cameraPose", netIff.cameraPose)
+        }
     }
 
     private fun hideCardSettings() {
@@ -246,6 +255,12 @@ class MainActivity : AppCompatActivity() {
 
         netIff = NetworkInterface(serverURI, cameraName, cameraPose, videoConfig)
         netIff.init()
+
+        Firebase.crashlytics.setCustomKeys {
+            key("serverURI", netIff.serverURI)
+            key("cameraName", netIff.cameraName)
+            key("cameraPose", netIff.cameraPose)
+        }
     }
 
     private fun setupTimer() {
@@ -270,18 +285,21 @@ class MainActivity : AppCompatActivity() {
 
                     when (hostCmd.cmd) {
                         CmdName.SetConfig -> {
-                            Log.i(TAG, "setShutterSpeed")
+                            log("setShutterSpeed")
                             myCamera!!.setShutterSpeedIso()
                         }
+
                         CmdName.StartVideo -> {
-                            Log.i(TAG, "Start Video Record")
+                            log("Start Video Record")
                             startRecordVideo(hostCmd.param)
                         }
+
                         CmdName.StopVideo -> {
-                            Log.i(TAG, "Stop Video Record")
+                            log("Stop Video Record")
                             stopRecordVideo()
                         }
 
+                        else -> {}
                     }
 
                 }
@@ -300,7 +318,7 @@ class MainActivity : AppCompatActivity() {
     private fun getBatteryStatus(): Map<String, Any> {
         val b: Intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))!!
 
-        val status: Int = b.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val status: Int = b.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
         val isCharging: Boolean = status == BatteryManager.BATTERY_STATUS_CHARGING
                 || status == BatteryManager.BATTERY_STATUS_FULL
 
@@ -390,12 +408,12 @@ class MainActivity : AppCompatActivity() {
         try {
             // Получение списка камер с устройства
             for (cameraID in mCameraManager.cameraIdList) {
-                Log.i(TAG, "cameraID: $cameraID")
+                log("cameraID: $cameraID")
                 val id = cameraID.toInt()
 
                 // создаем обработчик для камеры
                 if (id == 0) {
-                    Log.i(TAG, "Creating myCamera cameraID = $cameraID")
+                    log("Creating myCamera cameraID = $cameraID")
                     myCamera = CameraService(
                         this,
                         videoConfig,

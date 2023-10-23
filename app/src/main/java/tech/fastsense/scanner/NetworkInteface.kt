@@ -2,6 +2,9 @@ package tech.fastsense.scanner
 
 import android.os.Build
 import android.util.Log
+import com.google.firebase.crashlytics.ktx.crashlytics
+import com.google.firebase.crashlytics.ktx.setCustomKeys
+import com.google.firebase.ktx.Firebase
 import java.util.*
 
 import org.json.JSONException
@@ -9,7 +12,7 @@ import org.json.JSONObject
 
 import io.socket.client.IO
 import io.socket.client.Socket
-import io.socket.emitter.Emitter;
+import io.socket.emitter.Emitter
 import java.net.URISyntaxException
 
 enum class CmdName {
@@ -39,6 +42,15 @@ class NetworkInterface(
 
     private lateinit var currentScanID: String
 
+    companion object {
+        const val LOG_TAG = "NetworkInterface"
+    }
+
+    private fun log(msg: String) {
+        Log.i(LOG_TAG, "@@@ $msg")
+        Firebase.crashlytics.log("$LOG_TAG: $msg")
+    }
+
     fun init() {
         connectToSocketServer()
     }
@@ -62,12 +74,12 @@ class NetworkInterface(
     }
 
     fun connectToSocketServer() {
-        Log.v("fff", "@@@ $serverURI")
+        log("connectToSocketServer $serverURI")
         try {
             mSocket = IO.socket(serverURI)
         } catch (e: URISyntaxException) {
-            Log.v("fff", "@@@ URISyntaxException $e")
-            println("URISyntaxException")
+            Firebase.crashlytics.recordException(e)
+            log("URISyntaxException")
         }
 
         onConfig = Emitter.Listener { args ->
@@ -86,15 +98,20 @@ class NetworkInterface(
             try {
                 val side = data.getString("side")
 
-                Log.v("fff", "@@@ $side $cameraPose")
+                log("onStart $data")
 
                 if (side.equals(cameraPose)) {
                     val scanId = data.getString("id")
                     currentScanID = scanId
                     startCmdReceived = true
+
+                    Firebase.crashlytics.setCustomKeys {
+                        key("scanId", scanId)
+                    }
                 }
             } catch (e: JSONException) {
-                println("onStart: JSONException")
+                Firebase.crashlytics.recordException(e)
+                log("onStart JSONException $data")
                 return@Listener
             }
         }
@@ -106,18 +123,18 @@ class NetworkInterface(
                 val side = data.getString("side")
 
                 if (side.equals(cameraPose)) {
-                    println("Stop recording")
+                    log("onStop $data")
                     stopCmdReceived = true
                 }
             } catch (e: JSONException) {
-                println("onStart: JSONException")
+                Firebase.crashlytics.recordException(e)
                 return@Listener
             }
         }
 
-        mSocket?.on("config", onConfig);
-        mSocket?.on("start", onStart);
-        mSocket?.on("stop", onStop);
+        mSocket?.on("config", onConfig)
+        mSocket?.on("start", onStart)
+        mSocket?.on("stop", onStop)
         mSocket?.connect()
     }
 
@@ -126,7 +143,7 @@ class NetworkInterface(
     }
 
 
-    fun sendStatus(cameraState: String, timeFromStart: Long, image_str: String, batteryStatus: Map<String, Any>) {
+    fun sendStatus(cameraState: String, timeFromStart: Long, imageStr: String, batteryStatus: Map<String, Any>) {
         val statusMap = HashMap<String, Any>()
 
         val videoDuration: Int = if (cameraState == "ready") 0 else timeFromStart.toInt()
@@ -134,7 +151,7 @@ class NetworkInterface(
         statusMap["cameraState"] = cameraState
         statusMap["videoConfig"] = videoConfig.map()
         statusMap["videoDuration"] = videoDuration
-        statusMap["frame"] = image_str
+        statusMap["frame"] = imageStr
         statusMap["name"] = cameraName
         statusMap["side"] = cameraPose
 
@@ -143,7 +160,12 @@ class NetworkInterface(
         statusMap["model"] = Build.MODEL
 
         val statusJson = JSONObject(statusMap as Map<String, Any>?)
-        mSocket?.emit("status", statusJson);
+        mSocket?.emit("status", statusJson)
+
+
+        Firebase.crashlytics.setCustomKeys {
+            key("videoConfig", JSONObject(videoConfig.map() as Map<*, *>?).toString())
+        }
     }
 
 }
