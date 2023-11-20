@@ -16,7 +16,7 @@ import io.socket.emitter.Emitter
 import java.net.URISyntaxException
 
 enum class CmdName {
-    None, SetConfig, StartVideo, StopVideo
+    None, SetConfig, StartVideo, StopVideo, TakePhoto
 }
 
 class HostCmd(iCmd: CmdName, iParam: String) {
@@ -35,10 +35,12 @@ class NetworkInterface(
     private var onConfig: Emitter.Listener? = null
     private var onStart: Emitter.Listener? = null
     private var onStop: Emitter.Listener? = null
+    private var onPhoto: Emitter.Listener? = null
 
     private var configUpdated: Boolean = false
     private var startCmdReceived: Boolean = false
     private var stopCmdReceived: Boolean = false
+    private var photoCmdReceived: Boolean = false
 
     private lateinit var currentScanID: String
 
@@ -68,6 +70,10 @@ class NetworkInterface(
             stopCmdReceived -> {
                 stopCmdReceived = false
                 HostCmd(CmdName.StopVideo, "")
+            }
+            photoCmdReceived -> {
+                photoCmdReceived = false
+                HostCmd(CmdName.TakePhoto, "")
             }
             else -> HostCmd(CmdName.None, "")
         }
@@ -132,9 +138,25 @@ class NetworkInterface(
             }
         }
 
+        onPhoto = Emitter.Listener { args ->
+            val data = args[0] as JSONObject
+            try {
+                val side = data.getString("side")
+
+                if (side.equals(cameraPose)) {
+                    log("onPhoto $data")
+                    photoCmdReceived = true
+                }
+            } catch (e: JSONException) {
+                Firebase.crashlytics.recordException(e)
+                return@Listener
+            }
+        }
+
         mSocket?.on("config", onConfig)
         mSocket?.on("start", onStart)
         mSocket?.on("stop", onStop)
+        mSocket?.on("take_photo", onPhoto)
         mSocket?.connect()
     }
 

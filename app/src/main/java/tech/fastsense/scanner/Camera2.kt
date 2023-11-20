@@ -1,37 +1,32 @@
 package tech.fastsense.scanner
 
-import android.content.Context
-import androidx.annotation.RequiresApi
-
-import android.util.Log
-
 
 import android.Manifest
+import android.R.attr.bitmap
+import android.content.ContentValues
+import android.content.Context
 import android.content.pm.PackageManager
-
-import java.io.File
-
-import android.util.Base64
-
 import android.graphics.*
-import java.io.ByteArrayOutputStream
-
-import android.graphics.Bitmap
-
-import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
+import android.media.CamcorderProfile
+import android.media.MediaRecorder
+import android.net.Uri
+import android.os.*
+import android.provider.MediaStore
+import android.util.Base64
+import android.util.Log
 import android.view.Surface
 import android.view.TextureView
-import android.media.MediaRecorder
-
-import android.media.CamcorderProfile
-import android.os.*
-
-import java.lang.Exception
-import android.os.HandlerThread
+import androidx.annotation.RequiresApi
+import androidx.core.net.toFile
+import com.android.volley.RequestQueue
+import com.android.volley.toolbox.Volley
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.ktx.Firebase
-import java.lang.IllegalStateException
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.OutputStream
+import kotlin.concurrent.thread
 
 
 class CameraService(
@@ -42,6 +37,7 @@ class CameraService(
 
     private lateinit var outputDirectory: File
 
+    private var requestQueue: RequestQueue = Volley.newRequestQueue(context)
 
     private val base64DefString: String = ""
 
@@ -68,36 +64,16 @@ class CameraService(
         Firebase.crashlytics.log("$LOG_TAG: $msg")
     }
 
-    fun getResizedBitmap(bm: Bitmap, newWidth: Int, newHeight: Int): Bitmap {
-        val width = bm.width
-        val height = bm.height
-        val scaleWidth = newWidth.toFloat() / width
-        val scaleHeight = newHeight.toFloat() / height
-        // CREATE A MATRIX FOR THE MANIPULATION
-        val matrix = Matrix()
-        // RESIZE THE BIT MAP
-        matrix.postScale(scaleWidth, scaleHeight)
-
-        // "RECREATE" THE NEW BITMAP
-        val resizedBitmap = Bitmap.createBitmap(
-            bm, 0, 0, width, height, matrix, false
-        )
-        bm.recycle()
-        return resizedBitmap
-    }
-
     fun setShutterSpeedIso() {
         createCameraPreviewSession(false)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     fun getPreviewImage(): String {
-
         if (mImageView.surfaceTexture == null) {
             log("error! getPreviewImage surfaceTexture = null")
             return base64DefString
         }
-
 
         val s: String
         val view = mImageView
@@ -106,11 +82,7 @@ class CameraService(
             log("error! getPreviewImage view.bitmap = null")
             base64DefString
         } else {
-            val b: Bitmap = getResizedBitmap(
-                view.bitmap!!,
-                videoConfig.previewWidth,
-                videoConfig.previewHeight
-            )
+            val b: Bitmap = view.getBitmap(videoConfig.previewWidth, videoConfig.previewHeight)!!
 
             val baos = ByteArrayOutputStream()
             b.compress(
@@ -125,9 +97,99 @@ class CameraService(
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun takePhoto() {
+        thread {
+            val b: Bitmap = mImageView.getBitmap(2160, 3840)!!
+            val b1 = drawStringOnBitmap(
+                b, arrayOf(
+                    "iso: ${videoConfig.iso}",
+                    "exposure: ${1e9 / videoConfig.exposure}",
+                    "focus: ${if (videoConfig.focusMode == "auto") "auto" else videoConfig.focusDistance}",
+                ), Point(100, 100), 0xFF00FF, 96
+            )
+
+//            val uri = saveMediaToStorage(b1)
+
+            val r = object : VolleyMultipartRequest(
+                Method.POST,
+                "http://192.168.50.27/api/v0/tools/uploadPhoto?side=left",
+                {},
+                {}
+            ) {
+                override fun getByteData(): MutableMap<String, DataPart> {
+                    val baos = ByteArrayOutputStream()
+                    b1.compress(Bitmap.CompressFormat.JPEG, 80, baos)
+
+                    return mutableMapOf(
+                        "in_file" to DataPart(
+                            "${System.currentTimeMillis()}.jpg", baos.toByteArray(), "image/jpeg"
+                        )
+                    )
+                }
+            }
+            requestQueue.add(r)
+        }
+    }
+
+    private fun readBytes(uri: Uri): ByteArray? =
+        context.contentResolver.openInputStream(uri)?.use { it.buffered().readBytes() }
+
+    private fun drawStringOnBitmap(
+        src: Bitmap,
+        string: Array<String>,
+        location: Point,
+        color: Int,
+        size: Int,
+    ): Bitmap {
+        val result = Bitmap.createBitmap(2160, 3840, src.config)
+        val canvas = Canvas(result)
+        canvas.drawBitmap(src, 0f, 0f, null)
+        val paint = Paint()
+        paint.color = color
+        paint.alpha = 255
+        paint.textSize = size.toFloat()
+        paint.isAntiAlias = true
+        for ((i, row) in string.withIndex()) {
+            canvas.drawText(
+                row,
+                location.x.toFloat(),
+                location.y.toFloat() + i * size * 1.2F,
+                paint
+            )
+        }
+        return result
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun saveMediaToStorage(bitmap: Bitmap) : Uri {
+        val filename = "${System.currentTimeMillis()}.webp"
+
+        var fos: OutputStream? = null
+        var imageUri: Uri? = null
+
+        context.contentResolver?.also { resolver ->
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/webp")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            }
+
+            imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+
+            fos = imageUri?.let { resolver.openOutputStream(it) }
+        }
+
+        fos?.use {
+            bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSLESS, 90, it)
+        }
+
+        return imageUri!!
+    }
+
     @RequiresApi(Build.VERSION_CODES.S)
-    fun startRecordVideo(file_name: String) {
-        if (setUpMediaRecorder(file_name) == 0) {
+    fun startRecordVideo(fileName: String) {
+        if (setUpMediaRecorder(fileName) == 0) {
             createCameraPreviewSession(true)
             mMediaRecorder?.start()
         }
@@ -267,7 +329,7 @@ class CameraService(
             ).apply { mkdirs() }
         }
 
-        Log.v("AAA", "@@@ $mediaDir")
+        Log.v(LOG_TAG, "@@@ $mediaDir")
         return if (mediaDir != null && mediaDir.exists())
             mediaDir else (context as MainActivity).filesDir
     }

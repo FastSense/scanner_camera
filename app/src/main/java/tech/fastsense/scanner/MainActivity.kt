@@ -74,6 +74,9 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val PERMISSIONS_REQUEST_CODE = 837
         const val TAG = "MainActivity"
+
+        const val SCREEN_BRIGHTNESS_LOW = 0.00F
+        const val SCREEN_BRIGHTNESS_MEDIUM = 0.50F
     }
 
     private fun log(msg: String) {
@@ -161,10 +164,10 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
 
-            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) { }
         }
 
-        fabSettings.setOnClickListener { showCardSettings() }
+        fabSettings.setOnClickListener { myCamera!!.takePhoto() /*showCardSettings()*/ }
         btnSubmit.setOnClickListener { submitCardSettings() }
         btnCancel.setOnClickListener { hideCardSettings() }
 
@@ -299,12 +302,20 @@ class MainActivity : AppCompatActivity() {
                             stopRecordVideo()
                         }
 
+                        CmdName.TakePhoto -> {
+                            log("Take Photo")
+                            myCamera!!.takePhoto()
+                        }
+
                         else -> {}
                     }
 
                 }
-
-                setScreenBrightness(if (System.currentTimeMillis() - lastTapMs > 30_000 && cardSettings.visibility != View.VISIBLE) 0.05f else 0.85f)
+                if (System.currentTimeMillis() - lastTapMs > 30_000 && cardSettings.visibility != View.VISIBLE) {
+                    setScreenBrightness(SCREEN_BRIGHTNESS_LOW)
+                } else {
+                    setScreenBrightness(SCREEN_BRIGHTNESS_MEDIUM)
+                }
             }
 
             override fun onFinish() {
