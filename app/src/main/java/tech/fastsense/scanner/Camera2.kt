@@ -2,30 +2,25 @@ package tech.fastsense.scanner
 
 
 import android.Manifest
-import android.R.attr.bitmap
-import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.hardware.camera2.*
 import android.media.CamcorderProfile
 import android.media.MediaRecorder
-import android.net.Uri
 import android.os.*
-import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import android.view.Surface
 import android.view.TextureView
 import androidx.annotation.RequiresApi
-import androidx.core.net.toFile
+import androidx.appcompat.app.AppCompatActivity
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.Volley
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.ktx.Firebase
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.OutputStream
 import kotlin.concurrent.thread
 
 
@@ -50,10 +45,21 @@ class CameraService(
 
     private lateinit var builder: CaptureRequest.Builder
 
-    private var mBackgroundThread: HandlerThread? = null
     private var mBackgroundHandler: Handler? = null
 
     private var mMediaRecorder: MediaRecorder? = null
+
+    private val serverURI: String
+        get() {
+            val p = context.getSharedPreferences("network", AppCompatActivity.MODE_PRIVATE)
+            return p.getString("serverURI", "http://192.168.123.123:80")!!
+        }
+
+    private val cameraPose: String
+        get() {
+            val p = context.getSharedPreferences("common", AppCompatActivity.MODE_PRIVATE)
+            return p.getString("cameraPose", "left")!!
+        }
 
     companion object {
         const val LOG_TAG = "Camera2"
@@ -102,28 +108,30 @@ class CameraService(
         thread {
             val b: Bitmap = mImageView.getBitmap(2160, 3840)!!
             val b1 = drawStringOnBitmap(
-                b, arrayOf(
+                b,
+                arrayOf(
                     "iso: ${videoConfig.iso}",
                     "exposure: ${1e9 / videoConfig.exposure}",
                     "focus: ${if (videoConfig.focusMode == "auto") "auto" else videoConfig.focusDistance}",
-                ), Point(100, 100), 0xFF00FF, 96
+                ),
+                Point(100, 100)
             )
-
-//            val uri = saveMediaToStorage(b1)
 
             val r = object : VolleyMultipartRequest(
                 Method.POST,
-                "http://192.168.50.27/api/v0/tools/uploadPhoto?side=left",
+                "${serverURI}/api/v0/tools/uploadPhoto?side=${cameraPose}",
                 {},
                 {}
             ) {
                 override fun getByteData(): MutableMap<String, DataPart> {
                     val baos = ByteArrayOutputStream()
-                    b1.compress(Bitmap.CompressFormat.JPEG, 80, baos)
+                    b1.compress(Bitmap.CompressFormat.JPEG, 90, baos)
 
                     return mutableMapOf(
                         "in_file" to DataPart(
-                            "${System.currentTimeMillis()}.jpg", baos.toByteArray(), "image/jpeg"
+                            "${System.currentTimeMillis()}.jpg",
+                            baos.toByteArray(),
+                            "image/jpeg"
                         )
                     )
                 }
@@ -132,59 +140,28 @@ class CameraService(
         }
     }
 
-    private fun readBytes(uri: Uri): ByteArray? =
-        context.contentResolver.openInputStream(uri)?.use { it.buffered().readBytes() }
-
     private fun drawStringOnBitmap(
         src: Bitmap,
         string: Array<String>,
         location: Point,
-        color: Int,
-        size: Int,
     ): Bitmap {
         val result = Bitmap.createBitmap(2160, 3840, src.config)
         val canvas = Canvas(result)
         canvas.drawBitmap(src, 0f, 0f, null)
         val paint = Paint()
-        paint.color = color
+        paint.color = 0xFF00FF
         paint.alpha = 255
-        paint.textSize = size.toFloat()
+        paint.textSize = 96F
         paint.isAntiAlias = true
         for ((i, row) in string.withIndex()) {
             canvas.drawText(
                 row,
                 location.x.toFloat(),
-                location.y.toFloat() + i * size * 1.2F,
+                location.y.toFloat() + i * 96F * 1.2F,
                 paint
             )
         }
         return result
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    private fun saveMediaToStorage(bitmap: Bitmap) : Uri {
-        val filename = "${System.currentTimeMillis()}.webp"
-
-        var fos: OutputStream? = null
-        var imageUri: Uri? = null
-
-        context.contentResolver?.also { resolver ->
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/webp")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-            }
-
-            imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
-            fos = imageUri?.let { resolver.openOutputStream(it) }
-        }
-
-        fos?.use {
-            bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSLESS, 90, it)
-        }
-
-        return imageUri!!
     }
 
     @RequiresApi(Build.VERSION_CODES.S)

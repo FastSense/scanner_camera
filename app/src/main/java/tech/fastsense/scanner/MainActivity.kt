@@ -167,7 +167,7 @@ class MainActivity : AppCompatActivity() {
             override fun onSurfaceTextureUpdated(surface: SurfaceTexture) { }
         }
 
-        fabSettings.setOnClickListener { myCamera!!.takePhoto() /*showCardSettings()*/ }
+        fabSettings.setOnClickListener { showCardSettings() }
         btnSubmit.setOnClickListener { submitCardSettings() }
         btnCancel.setOnClickListener { hideCardSettings() }
 
