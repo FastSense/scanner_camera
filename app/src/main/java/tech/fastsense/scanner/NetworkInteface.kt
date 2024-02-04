@@ -44,6 +44,12 @@ class NetworkInterface(
 
     private lateinit var currentScanID: String
 
+    private val cameraSide: String
+        get() = if (cameraPose.contains("left")) "left" else "right"
+
+    private val cameraSubSide: String?
+        get() = if (cameraPose.split("_").size > 1) cameraPose.split("_")[1] else null
+
     companion object {
         const val LOG_TAG = "NetworkInterface"
     }
@@ -63,20 +69,28 @@ class NetworkInterface(
                 configUpdated = false
                 HostCmd(CmdName.SetConfig, "")
             }
+
             startCmdReceived -> {
                 startCmdReceived = false
                 HostCmd(CmdName.StartVideo, currentScanID)
             }
+
             stopCmdReceived -> {
                 stopCmdReceived = false
                 HostCmd(CmdName.StopVideo, "")
             }
+
             photoCmdReceived -> {
                 photoCmdReceived = false
                 HostCmd(CmdName.TakePhoto, "")
             }
+
             else -> HostCmd(CmdName.None, "")
         }
+    }
+
+    private fun isMySide(side: String): Boolean {
+        return (side.split("_").size == 1 && side == cameraSide) || side == cameraPose
     }
 
     fun connectToSocketServer() {
@@ -93,10 +107,11 @@ class NetworkInterface(
 
             val side = data.getString("side")
 
-            if (side.equals(cameraPose)) {
+            if (isMySide(side)) {
                 videoConfig.fromJson(data)
                 configUpdated = true
             }
+
         }
 
         onStart = Emitter.Listener { args ->
@@ -106,7 +121,7 @@ class NetworkInterface(
 
                 log("onStart $data")
 
-                if (side.equals(cameraPose)) {
+                if (isMySide(side)) {
                     val scanId = data.getString("id")
                     currentScanID = scanId
                     startCmdReceived = true
@@ -128,7 +143,7 @@ class NetworkInterface(
             try {
                 val side = data.getString("side")
 
-                if (side.equals(cameraPose)) {
+                if (isMySide(side)) {
                     log("onStop $data")
                     stopCmdReceived = true
                 }
@@ -143,7 +158,7 @@ class NetworkInterface(
             try {
                 val side = data.getString("side")
 
-                if (side.equals(cameraPose)) {
+                if (isMySide(side)) {
                     log("onPhoto $data")
                     photoCmdReceived = true
                 }
@@ -165,7 +180,12 @@ class NetworkInterface(
     }
 
 
-    fun sendStatus(cameraState: String, timeFromStart: Long, imageStr: String, batteryStatus: Map<String, Any>) {
+    fun sendStatus(
+        cameraState: String,
+        timeFromStart: Long,
+        imageStr: String,
+        batteryStatus: Map<String, Any>
+    ) {
         val statusMap = HashMap<String, Any>()
 
         val videoDuration: Int = if (cameraState == "ready") 0 else timeFromStart.toInt()

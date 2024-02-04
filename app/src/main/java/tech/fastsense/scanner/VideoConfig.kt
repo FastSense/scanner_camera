@@ -43,6 +43,7 @@ class VideoConfig(pref: SharedPreferences) {
         previewHeight = sharedPref.getInt("preview_height", 384)
         focusMode = sharedPref.getString("focus_mode", "auto")!!
         focusDistance = sharedPref.getFloat("focus_distance", 1.3f)
+        fullResolution = if (sharedPref.getString("full_resolution", "4k") == "4k") FullResolution.FOURK else FullResolution.FULLHD
     }
 
     fun map(): HashMap<String, Any> {
@@ -118,6 +119,7 @@ class VideoConfig(pref: SharedPreferences) {
             .putInt("preview_width", previewWidth)
             .putInt("preview_height", previewHeight)
             .putString("focus_mode", focusMode)
+            .putString("full_resolution", if (fullResolution == FullResolution.FOURK) "4k" else "fullhd")
             .putFloat("focus_distance", focusDistance)
             .apply()
     }

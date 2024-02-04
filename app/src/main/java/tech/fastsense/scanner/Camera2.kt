@@ -106,7 +106,12 @@ class CameraService(
     @RequiresApi(Build.VERSION_CODES.R)
     fun takePhoto() {
         thread {
-            val b: Bitmap = mImageView.getBitmap(2160, 3840)!!
+            val b: Bitmap = if (videoConfig.fullResolution == FullResolution.FOURK) {
+                mImageView.getBitmap(2160, 3840)!!
+            } else {
+                mImageView.getBitmap(1080, 1920)!!
+            }
+
             val b1 = drawStringOnBitmap(
                 b,
                 arrayOf(
@@ -145,7 +150,11 @@ class CameraService(
         string: Array<String>,
         location: Point,
     ): Bitmap {
-        val result = Bitmap.createBitmap(2160, 3840, src.config)
+        val result = if (videoConfig.fullResolution == FullResolution.FOURK) {
+            Bitmap.createBitmap(2160, 3840, src.config)
+        } else {
+            Bitmap.createBitmap(1080, 1920, src.config)
+        }
         val canvas = Canvas(result)
         canvas.drawBitmap(src, 0f, 0f, null)
         val paint = Paint()
@@ -225,7 +234,12 @@ class CameraService(
         val texture: SurfaceTexture? = mImageView.surfaceTexture
         log("createCameraPreviewSession 0 $mImageView $texture")
 
-        texture?.setDefaultBufferSize(3840, 2160)
+        if (videoConfig.fullResolution == FullResolution.FOURK) {
+            texture?.setDefaultBufferSize(3840, 2160)
+        } else {
+            texture?.setDefaultBufferSize(1920, 1080)
+        }
+
         val surface = Surface(texture)
         log("createCameraPreviewSession 1")
 
@@ -315,7 +329,12 @@ class CameraService(
     @RequiresApi(Build.VERSION_CODES.S)
     private fun setUpMediaRecorder(fileName: String): Int {
 
-        val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_2160P)
+        val profile =
+            if (videoConfig.fullResolution == FullResolution.FOURK) {
+                CamcorderProfile.get(CamcorderProfile.QUALITY_2160P)
+            } else {
+                CamcorderProfile.get(CamcorderProfile.QUALITY_1080P)
+            }
 
         mMediaRecorder = MediaRecorder()
         mMediaRecorder?.setVideoSource(MediaRecorder.VideoSource.SURFACE)

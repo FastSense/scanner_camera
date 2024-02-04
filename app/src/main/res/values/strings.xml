@@ -23,4 +23,13 @@
     <string name="settings_submit">Submit</string>
     <string name="settings_cancel">Cancel</string>
     <string name="settings_title">Settings</string>
+
+    <string-array name="sides">
+        <item>left</item>
+        <item>right</item>
+        <item>left_top</item>
+        <item>left_bottom</item>
+        <item>right_top</item>
+        <item>right_bottom</item>
+    </string-array>
 </resources>

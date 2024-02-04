@@ -133,26 +133,11 @@
                     android:text="@string/setting_server_uri_default" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <RadioGroup
-                android:id="@+id/radio_side_group"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:checkedButton="@id/radio_side_left"
-                android:orientation="horizontal">
-
-                <RadioButton
-                    android:id="@+id/radio_side_left"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_left_side" />
-
-                <RadioButton
-                    android:id="@+id/radio_side_right"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_right_side" />
-            </RadioGroup>
+            <Spinner
+                android:id="@+id/spinner_side"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:entries="@array/sides" />
 
             <LinearLayout
                 android:layout_width="wrap_content"

@@ -21,7 +21,7 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
-import android.widget.RadioGroup
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cardSettings: CardView
     private lateinit var inputCameraName: EditText
     private lateinit var inputServerUri: EditText
-    private lateinit var radioSide: RadioGroup
+    private lateinit var spinnerSide: Spinner
     private lateinit var btnSubmit: Button
     private lateinit var btnCancel: Button
 
@@ -134,7 +134,7 @@ class MainActivity : AppCompatActivity() {
         cardSettings = findViewById(R.id.card_settings)
         inputCameraName = findViewById(R.id.input_cam_name)
         inputServerUri = findViewById(R.id.input_server_uri)
-        radioSide = findViewById(R.id.radio_side_group)
+        spinnerSide = findViewById(R.id.spinner_side)
         btnCancel = findViewById(R.id.btn_settings_cancel)
         btnSubmit = findViewById(R.id.btn_settings_submit)
 
@@ -175,13 +175,7 @@ class MainActivity : AppCompatActivity() {
         val commonPref = getSharedPreferences("common", MODE_PRIVATE)
         val cameraPose = commonPref.getString("cameraPose", "left")!!
 
-        chipCameraLoc.setText(
-            when (cameraPose) {
-                "left" -> R.string.cam_loc_left
-                "right" -> R.string.cam_loc_right
-                else -> R.string.cam_loc_right
-            }
-        )
+        chipCameraLoc.text = cameraPose
 
         findViewById<TextView>(R.id.textView_version_name).text = BuildConfig.VERSION_NAME
     }
@@ -190,37 +184,21 @@ class MainActivity : AppCompatActivity() {
         cardSettings.visibility = View.VISIBLE
         inputCameraName.setText(netIff.cameraName)
         inputServerUri.setText(netIff.serverURI)
-        radioSide.check(
-            when (netIff.cameraPose) {
-                "left" -> R.id.radio_side_left
-                "right" -> R.id.radio_side_right
-                else -> R.id.radio_side_left
-            }
-        )
+        spinnerSide.setSelection(resources.getStringArray(R.array.sides).indexOf(netIff.cameraPose))
     }
 
     private fun submitCardSettings() {
         hideCardSettings()
 
         netIff.cameraName = inputCameraName.text.toString()
-        netIff.cameraPose = when (radioSide.checkedRadioButtonId) {
-            R.id.radio_side_left -> "left"
-            R.id.radio_side_right -> "right"
-            else -> "left"
-        }
+        netIff.cameraPose = spinnerSide.selectedItem as String
 
         if (netIff.serverURI != inputServerUri.text.toString()) {
             netIff.serverURI = inputServerUri.text.toString()
             netIff.connectToSocketServer()
         }
 
-        chipCameraLoc.setText(
-            when (radioSide.checkedRadioButtonId) {
-                R.id.radio_side_left -> R.string.cam_loc_left
-                R.id.radio_side_right -> R.string.cam_loc_right
-                else -> R.string.cam_loc_right
-            }
-        )
+        chipCameraLoc.text = spinnerSide.selectedItem as String
 
         val networkPrefEditor = getSharedPreferences("network", MODE_PRIVATE).edit()
         val commonPrefEditor = getSharedPreferences("common", MODE_PRIVATE).edit()
@@ -267,7 +245,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupTimer() {
-        pingTimer = object : CountDownTimer(500000, 100) {
+        var prevStatusTs = 0L
+
+        pingTimer = object : CountDownTimer(1_500_000, 10) {
             @RequiresApi(Build.VERSION_CODES.S)
             override fun onTick(millisUntilFinished: Long) {
                 if (cameraReady) {
@@ -277,12 +257,16 @@ class MainActivity : AppCompatActivity() {
                     updateRecordingState()
 
                     val cameraState: String = if (recordingVideo) "recording" else "ready"
-                    netIff.sendStatus(
-                        cameraState,
-                        (currentTimeMs - startTimeMs) / 1000,
-                        myCamera!!.getPreviewImage(),
-                        getBatteryStatus(),
-                    )
+
+                    if (System.currentTimeMillis() -  prevStatusTs > 90) {
+                        netIff.sendStatus(
+                            cameraState,
+                            (currentTimeMs - startTimeMs) / 1000,
+                            myCamera!!.getPreviewImage(),
+                            getBatteryStatus(),
+                        )
+                        prevStatusTs = System.currentTimeMillis()
+                    }
 
                     val hostCmd = netIff.getNewCommand()
 
@@ -358,7 +342,13 @@ class MainActivity : AppCompatActivity() {
             startTimeMs = System.currentTimeMillis()
             updateRecordingState()
 
-            myCamera!!.startRecordVideo("$scanId--${currentDate}")
+            val commonPref = getSharedPreferences("common", MODE_PRIVATE)
+            val cameraPose = commonPref.getString("cameraPose", "left")!!
+            val subSide = if (cameraPose.split("_").size > 1) cameraPose.split("_")[1] else null
+
+            val fileName = if (subSide != null) "$scanId--$subSide--$currentDate" else "$scanId--$currentDate"
+
+            myCamera!!.startRecordVideo(fileName)
         }
     }
 
