@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraManager
@@ -27,15 +28,33 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
+import com.android.volley.toolbox.JsonArrayRequest
+import com.android.volley.toolbox.Volley
 import com.google.android.material.chip.Chip
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.crashlytics.ktx.setCustomKeys
 import com.google.firebase.ktx.Firebase
+import com.google.gson.Gson
 import kotlinx.android.synthetic.main.activity_main.*
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.Response
+import org.json.JSONArray
 import pub.devrel.easypermissions.AfterPermissionGranted
 import pub.devrel.easypermissions.EasyPermissions
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
 import java.text.SimpleDateFormat
+import java.time.Duration
 import java.util.*
 
 
@@ -53,6 +72,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnCancel: Button
 
     private lateinit var pingTimer: CountDownTimer
+    private lateinit var videoSyncTimer: Timer
     private lateinit var netIff: NetworkInterface
 
     private lateinit var myTextureView: TextureView
@@ -93,6 +113,7 @@ class MainActivity : AppCompatActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         setupTimer()
+        setupVideoSync()
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -244,6 +265,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupVideoSync() {
+        videoSyncTimer = Timer()
+
+        videoSyncTimer.scheduleAtFixedRate(object: TimerTask() {
+            override fun run() {
+                syncVideos()
+            }
+        }, 0L, 5000L)
+    }
+
     private fun setupTimer() {
         var prevStatusTs = 0L
 
@@ -357,6 +388,109 @@ class MainActivity : AppCompatActivity() {
         updateRecordingState()
 
         myCamera!!.stopRecordVideo()
+    }
+
+    private val serverURI: String
+        get() {
+            val p = getSharedPreferences("network", MODE_PRIVATE)
+            return p.getString("serverURI", "http://192.168.123.123:80")!!
+        }
+
+    data class FileInfo(
+        val name: String,
+        val lastModified: Float,
+        val size: Long,
+    )
+
+    private fun getOutputDirectory(): File {
+        val mediaDir = externalMediaDirs.firstOrNull()?.let {
+            File(
+                it,
+                resources.getString(R.string.app_name)
+            ).apply { mkdirs() }
+        }
+
+        return if (mediaDir != null && mediaDir.exists()) mediaDir else filesDir
+    }
+
+    var isCopyingVideo = false
+
+    private fun uploadVideo(file: File) {
+        log("VIDEO_SYNC: copy file $file")
+
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(
+                "in_file",
+                file.name,
+                file.asRequestBody("video/mp4".toMediaTypeOrNull())
+            )
+            .build()
+
+        val commonPref = getSharedPreferences("common", MODE_PRIVATE)
+        val cameraPose = commonPref.getString("cameraPose", "left")!!
+
+        val request = Request.Builder()
+            .url("$serverURI/api/v0/storage/videos/?source=${cameraPose}")
+            .put(requestBody)
+            .build()
+
+        val client = OkHttpClient.Builder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .readTimeout(Duration.ofSeconds(300))
+            .writeTimeout(Duration.ofSeconds(300))
+            .build()
+
+        isCopyingVideo = true
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                log("VIDEO_SYNC: upload failed ${e.message} $e")
+                isCopyingVideo = false
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                log("VIDEO_SYNC: video copied ${response.body?.string()}")
+                isCopyingVideo = false
+            }
+        })
+    }
+
+    private fun syncVideos() {
+        if (recordingVideo) {
+            log("VIDEO_SYNC: recording video, skip sync")
+            return
+        }
+
+        if (isCopyingVideo) {
+            log("VIDEO_SYNC: copying video, skip sync")
+            return
+        }
+
+        val queue = Volley.newRequestQueue(this)
+        val jsonArrayRequest = JsonArrayRequest(
+            com.android.volley.Request.Method.GET, "$serverURI/api/v0/storage/videos/", null,
+            { response ->
+
+                val gson = Gson()
+                val filesList: List<FileInfo> = gson.fromJson(response.toString(), Array<FileInfo>::class.java).toList()
+                val remoteFilesNames = filesList.map { it.name }
+
+                val localFiles = getOutputDirectory().listFiles()!!
+                val localFilesNames = localFiles.map { it.name }
+
+                for (fn in localFilesNames) {
+                    if (!remoteFilesNames.contains(fn)) {
+                        Thread.sleep(2000)
+                        uploadVideo(localFiles.find { it.name == fn }!!)
+                        break
+                    }
+                }
+            },
+            { }
+        )
+        queue.add(jsonArrayRequest)
     }
 
     private fun updateRecordingState() {
