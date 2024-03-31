@@ -2,6 +2,7 @@ package tech.fastsense.scanner
 
 import android.os.Build
 import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.crashlytics.ktx.setCustomKeys
 import com.google.firebase.ktx.Firebase
@@ -179,6 +180,15 @@ class NetworkInterface(
         return mSocket?.connected()
     }
 
+    fun sendNotification(name: String, message: String, level: String = "debug") {
+        val statusJson = JSONObject(mapOf(
+            "name" to name,
+            "sender" to cameraPose,
+            "message" to message,
+            "level" to level,
+        ))
+        mSocket?.emit("notification", statusJson)
+    }
 
     fun sendStatus(
         cameraState: String,

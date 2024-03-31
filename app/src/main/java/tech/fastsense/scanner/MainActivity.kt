@@ -56,6 +56,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.util.*
+import kotlin.concurrent.timerTask
 
 
 class MainActivity : AppCompatActivity() {
@@ -71,7 +72,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSubmit: Button
     private lateinit var btnCancel: Button
 
-    private lateinit var pingTimer: CountDownTimer
+    private lateinit var pingTimer: Timer
     private lateinit var videoSyncTimer: Timer
     private lateinit var netIff: NetworkInterface
 
@@ -268,7 +269,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupVideoSync() {
         videoSyncTimer = Timer()
 
-        videoSyncTimer.scheduleAtFixedRate(object: TimerTask() {
+        videoSyncTimer.schedule(object: TimerTask() {
             override fun run() {
                 syncVideos()
             }
@@ -278,67 +279,67 @@ class MainActivity : AppCompatActivity() {
     private fun setupTimer() {
         var prevStatusTs = 0L
 
-        pingTimer = object : CountDownTimer(1_500_000, 10) {
+        pingTimer = Timer()
+
+        pingTimer.schedule(object : TimerTask() {
             @RequiresApi(Build.VERSION_CODES.S)
-            override fun onTick(millisUntilFinished: Long) {
-                if (cameraReady) {
-                    val currentTimeMs: Long = System.currentTimeMillis()
+            override fun run() {
+                runOnUiThread {
+                    run {
+                        if (cameraReady) {
+                            val currentTimeMs: Long = System.currentTimeMillis()
 
-                    updateConnectionState()
-                    updateRecordingState()
+                            updateConnectionState()
+                            updateRecordingState()
 
-                    val cameraState: String = if (recordingVideo) "recording" else "ready"
+                            val cameraState: String = if (recordingVideo) "recording" else "ready"
 
-                    if (System.currentTimeMillis() -  prevStatusTs > 90) {
-                        netIff.sendStatus(
-                            cameraState,
-                            (currentTimeMs - startTimeMs) / 1000,
-                            myCamera!!.getPreviewImage(),
-                            getBatteryStatus(),
-                        )
-                        prevStatusTs = System.currentTimeMillis()
+                            if (System.currentTimeMillis() -  prevStatusTs > 90) {
+                                netIff.sendStatus(
+                                    cameraState,
+                                    (currentTimeMs - startTimeMs) / 1000,
+                                    myCamera!!.getPreviewImage(),
+                                    getBatteryStatus(),
+                                )
+                                prevStatusTs = System.currentTimeMillis()
+                            }
+
+                            val hostCmd = netIff.getNewCommand()
+
+                            when (hostCmd.cmd) {
+                                CmdName.SetConfig -> {
+                                    log("setShutterSpeed")
+                                    myCamera!!.setShutterSpeedIso()
+                                }
+
+                                CmdName.StartVideo -> {
+                                    log("Start Video Record")
+                                    startRecordVideo(hostCmd.param)
+                                }
+
+                                CmdName.StopVideo -> {
+                                    log("Stop Video Record")
+                                    stopRecordVideo()
+                                }
+
+                                CmdName.TakePhoto -> {
+                                    log("Take Photo")
+                                    myCamera!!.takePhoto()
+                                }
+
+                                else -> {}
+                            }
+
+                        }
+                        if (System.currentTimeMillis() - lastTapMs > 30_000 && cardSettings.visibility != View.VISIBLE) {
+                            setScreenBrightness(SCREEN_BRIGHTNESS_LOW)
+                        } else {
+                            setScreenBrightness(SCREEN_BRIGHTNESS_MEDIUM)
+                        }
                     }
-
-                    val hostCmd = netIff.getNewCommand()
-
-                    when (hostCmd.cmd) {
-                        CmdName.SetConfig -> {
-                            log("setShutterSpeed")
-                            myCamera!!.setShutterSpeedIso()
-                        }
-
-                        CmdName.StartVideo -> {
-                            log("Start Video Record")
-                            startRecordVideo(hostCmd.param)
-                        }
-
-                        CmdName.StopVideo -> {
-                            log("Stop Video Record")
-                            stopRecordVideo()
-                        }
-
-                        CmdName.TakePhoto -> {
-                            log("Take Photo")
-                            myCamera!!.takePhoto()
-                        }
-
-                        else -> {}
-                    }
-
-                }
-                if (System.currentTimeMillis() - lastTapMs > 30_000 && cardSettings.visibility != View.VISIBLE) {
-                    setScreenBrightness(SCREEN_BRIGHTNESS_LOW)
-                } else {
-                    setScreenBrightness(SCREEN_BRIGHTNESS_MEDIUM)
                 }
             }
-
-            override fun onFinish() {
-                this.start() //start again the CountDownTimer
-            }
-        }
-
-        pingTimer.start()
+        },0L, 10L)
     }
 
     private fun getBatteryStatus(): Map<String, Any> {
@@ -458,6 +459,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun syncVideos() {
+        log("VIDEO_SYNC: checking ...")
+
         if (recordingVideo) {
             log("VIDEO_SYNC: recording video, skip sync")
             return
@@ -482,8 +485,12 @@ class MainActivity : AppCompatActivity() {
 
                 for (fn in localFilesNames) {
                     if (!remoteFilesNames.contains(fn)) {
-                        Thread.sleep(2000)
-                        uploadVideo(localFiles.find { it.name == fn }!!)
+
+                        Timer().schedule(timerTask {
+                            netIff.sendNotification("New video [${netIff.cameraPose}]", fn)
+                            uploadVideo(localFiles.find { it.name == fn }!!)
+                        }, 2000)
+
                         break
                     }
                 }
