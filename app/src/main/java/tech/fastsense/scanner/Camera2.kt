@@ -1,6 +1,5 @@
 package tech.fastsense.scanner
 
-
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -22,7 +21,6 @@ import com.google.firebase.ktx.Firebase
 import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlin.concurrent.thread
-
 
 class CameraService(
     private var context: Context, private var videoConfig: VideoConfig,
@@ -252,12 +250,30 @@ class CameraService(
             builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, videoConfig.exposure)
             builder.set(CaptureRequest.SENSOR_SENSITIVITY, videoConfig.iso)
 
-
             if ("manual" == videoConfig.focusMode) {
                 builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
                 builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, 1f / videoConfig.focusDistance)
             } else {
                 // ...
+            }
+
+            val callback = object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    mCaptureSession = session
+                    try {
+                        mCaptureSession.setRepeatingRequest(
+                            builder.build(),
+                            null,
+                            mBackgroundHandler
+                        )
+                    } catch (e: CameraAccessException) {
+                        e.printStackTrace()
+                    } catch (e: IllegalStateException) {
+                        e.printStackTrace()
+                    }
+                }
+
+                override fun onConfigureFailed(session: CameraCaptureSession) {}
             }
 
             if (recordVideo) {
@@ -267,50 +283,21 @@ class CameraService(
                 }
                 mCameraDevice!!.createCaptureSession(
                     listOf(surface, mMediaRecorder?.surface),
-                    object : CameraCaptureSession.StateCallback() {
-                        override fun onConfigured(session: CameraCaptureSession) {
-                            mCaptureSession = session
-                            try {
-                                mCaptureSession.setRepeatingRequest(
-                                    builder.build(),
-                                    null,
-                                    mBackgroundHandler
-                                )
-                            } catch (e: CameraAccessException) {
-                                e.printStackTrace()
-                            }
-                        }
-
-                        override fun onConfigureFailed(session: CameraCaptureSession) {}
-                    }, mBackgroundHandler
+                    callback,
+                    null // Использование null, чтобы использовать looper текущего потока (Main Thread)
                 )
             } else {
                 mCameraDevice!!.createCaptureSession(
                     listOf(surface),
-                    object : CameraCaptureSession.StateCallback() {
-                        override fun onConfigured(session: CameraCaptureSession) {
-                            mCaptureSession = session
-                            try {
-                                mCaptureSession.setRepeatingRequest(
-                                    builder.build(),
-                                    null,
-                                    mBackgroundHandler
-                                )
-                            } catch (e: CameraAccessException) {
-                                e.printStackTrace()
-                            }
-                        }
-
-                        override fun onConfigureFailed(session: CameraCaptureSession) {}
-                    }, mBackgroundHandler
+                    callback,
+                    null // Использование null, чтобы использовать looper текущего потока (Main Thread)
                 )
             }
-
-
         } catch (e: CameraAccessException) {
             e.printStackTrace()
         }
     }
+
 
     private fun getOutputDirectory(): File {
         val mediaDir = (context as MainActivity).externalMediaDirs.firstOrNull()?.let {
@@ -342,7 +329,6 @@ class CameraService(
 
         mMediaRecorder?.setVideoEncodingBitRate(profile.videoBitRate)
 
-
         mMediaRecorder?.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
         mMediaRecorder?.setVideoFrameRate(profile.videoFrameRate)
         mMediaRecorder?.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight)
@@ -351,7 +337,6 @@ class CameraService(
         val mCurrentFile = File(outputDirectory, "$fileName.mp4")
 
         mMediaRecorder?.setOutputFile(mCurrentFile.absolutePath)
-
 
         log("File path: ${mCurrentFile.absolutePath}")
 
@@ -365,5 +350,4 @@ class CameraService(
         }
         return 0
     }
-
 }

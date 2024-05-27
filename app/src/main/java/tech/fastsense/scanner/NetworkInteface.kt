@@ -6,11 +6,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.crashlytics.ktx.setCustomKeys
 import com.google.firebase.ktx.Firebase
-import java.util.*
-
 import org.json.JSONException
 import org.json.JSONObject
-
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
@@ -214,10 +211,8 @@ class NetworkInterface(
         val statusJson = JSONObject(statusMap as Map<String, Any>?)
         mSocket?.emit("status", statusJson)
 
-
         Firebase.crashlytics.setCustomKeys {
             key("videoConfig", JSONObject(videoConfig.map() as Map<*, *>?).toString())
         }
     }
-
 }

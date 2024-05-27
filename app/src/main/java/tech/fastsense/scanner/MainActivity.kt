@@ -13,7 +13,8 @@ import android.hardware.camera2.CameraManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
-import android.os.CountDownTimer
+import android.os.Handler
+import android.os.HandlerThread
 import android.util.Log
 import android.view.MotionEvent
 import android.view.TextureView
@@ -39,12 +40,10 @@ import com.google.gson.Gson
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.Response
 import org.json.JSONArray
@@ -56,8 +55,8 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.util.*
+import kotlin.concurrent.thread
 import kotlin.concurrent.timerTask
-
 
 class MainActivity : AppCompatActivity() {
     private lateinit var chipRecStatus: Chip
@@ -89,8 +88,12 @@ class MainActivity : AppCompatActivity() {
 
     private var myCamera: CameraService? = null
 
+    private lateinit var sensorRecorder: SensorRecorder
+
     private var recordingVideo: Boolean = false
 
+    private lateinit var statusHandlerThread: HandlerThread
+    private lateinit var statusHandler: Handler
 
     companion object {
         const val PERMISSIONS_REQUEST_CODE = 837
@@ -112,6 +115,8 @@ class MainActivity : AppCompatActivity() {
 
         videoConfig = VideoConfig(getSharedPreferences("videoConfig", MODE_PRIVATE))
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        sensorRecorder = SensorRecorder(this)
 
         setupTimer()
         setupVideoSync()
@@ -192,7 +197,6 @@ class MainActivity : AppCompatActivity() {
         fabSettings.setOnClickListener { showCardSettings() }
         btnSubmit.setOnClickListener { submitCardSettings() }
         btnCancel.setOnClickListener { hideCardSettings() }
-
 
         val commonPref = getSharedPreferences("common", MODE_PRIVATE)
         val cameraPose = commonPref.getString("cameraPose", "left")!!
@@ -279,67 +283,67 @@ class MainActivity : AppCompatActivity() {
     private fun setupTimer() {
         var prevStatusTs = 0L
 
-        pingTimer = Timer()
+        // Создаем HandlerThread для выполнения фоновых задач
+        statusHandlerThread = HandlerThread("StatusHandlerThread")
+        statusHandlerThread.start()
+        statusHandler = Handler(statusHandlerThread.looper)
 
-        pingTimer.schedule(object : TimerTask() {
+        // Используем Handler для выполнения периодических задач
+        statusHandler.post(object : Runnable {
             @RequiresApi(Build.VERSION_CODES.S)
             override fun run() {
-                runOnUiThread {
-                    run {
-                        if (cameraReady) {
-                            val currentTimeMs: Long = System.currentTimeMillis()
+                if (cameraReady) {
+                    val currentTimeMs: Long = System.currentTimeMillis()
 
-                            updateConnectionState()
-                            updateRecordingState()
+                    updateConnectionState()
+                    updateRecordingState()
 
-                            val cameraState: String = if (recordingVideo) "recording" else "ready"
+                    val cameraState: String = if (recordingVideo) "recording" else "ready"
 
-                            if (System.currentTimeMillis() -  prevStatusTs > 90) {
-                                netIff.sendStatus(
-                                    cameraState,
-                                    (currentTimeMs - startTimeMs) / 1000,
-                                    myCamera!!.getPreviewImage(),
-                                    getBatteryStatus(),
-                                )
-                                prevStatusTs = System.currentTimeMillis()
-                            }
+                    if (System.currentTimeMillis() -  prevStatusTs > 90) {
+                        val statusStartTime = System.currentTimeMillis()
+                        netIff.sendStatus(
+                            cameraState,
+                            (currentTimeMs - startTimeMs) / 1000,
+                            myCamera!!.getPreviewImage(),
+                            getBatteryStatus(),
+                        )
+                        val statusEndTime = System.currentTimeMillis()
+                        log("sendStatus execution time: ${statusEndTime - statusStartTime} ms")
+                        prevStatusTs = System.currentTimeMillis()
+                    }
 
-                            val hostCmd = netIff.getNewCommand()
+                    // Обработка команд от сервера
+                    val hostCmd = netIff.getNewCommand()
 
-                            when (hostCmd.cmd) {
-                                CmdName.SetConfig -> {
-                                    log("setShutterSpeed")
-                                    myCamera!!.setShutterSpeedIso()
-                                }
-
-                                CmdName.StartVideo -> {
-                                    log("Start Video Record")
-                                    startRecordVideo(hostCmd.param)
-                                }
-
-                                CmdName.StopVideo -> {
-                                    log("Stop Video Record")
-                                    stopRecordVideo()
-                                }
-
-                                CmdName.TakePhoto -> {
-                                    log("Take Photo")
-                                    myCamera!!.takePhoto()
-                                }
-
-                                else -> {}
-                            }
-
+                    when (hostCmd.cmd) {
+                        CmdName.SetConfig -> {
+                            log("setShutterSpeed")
+                            myCamera!!.setShutterSpeedIso()
                         }
-                        if (System.currentTimeMillis() - lastTapMs > 30_000 && cardSettings.visibility != View.VISIBLE) {
-                            setScreenBrightness(SCREEN_BRIGHTNESS_LOW)
-                        } else {
-                            setScreenBrightness(SCREEN_BRIGHTNESS_MEDIUM)
+
+                        CmdName.StartVideo -> {
+                            log("Start Video Record")
+                            startRecordVideo(hostCmd.param)
                         }
+
+                        CmdName.StopVideo -> {
+                            log("Stop Video Record")
+                            stopRecordVideo()
+                        }
+
+                        CmdName.TakePhoto -> {
+                            log("Take Photo")
+                            myCamera!!.takePhoto()
+                        }
+
+                        else -> {}
                     }
                 }
+                // Повторяем задачу через 10 миллисекунд
+                statusHandler.postDelayed(this, 10)
             }
-        },0L, 10L)
+        })
     }
 
     private fun getBatteryStatus(): Map<String, Any> {
@@ -380,16 +384,31 @@ class MainActivity : AppCompatActivity() {
 
             val fileName = if (subSide != null) "$scanId--$subSide--$currentDate" else "$scanId--$currentDate"
 
-            myCamera!!.startRecordVideo(fileName)
+            runOnUiThread {
+                myCamera!!.startRecordVideo(fileName)
+                sensorRecorder.startRecording("$fileName.jsonl") // Начало записи данных с сенсоров
+            }
+        } else {
+            log("Recording is already in progress, ignoring the start command.")
         }
     }
 
-    fun stopRecordVideo() {
-        recordingVideo = false
-        updateRecordingState()
 
-        myCamera!!.stopRecordVideo()
+
+    fun stopRecordVideo() {
+        if (recordingVideo) {
+            recordingVideo = false
+            updateRecordingState()
+
+            runOnUiThread {
+                myCamera!!.stopRecordVideo()
+                sensorRecorder.stopRecording() // Остановка записи данных с сенсоров
+            }
+        } else {
+            log("Recording is not in progress, ignoring the stop command.")
+        }
     }
+
 
     private val serverURI: String
         get() {
@@ -488,7 +507,7 @@ class MainActivity : AppCompatActivity() {
 
                         Timer().schedule(timerTask {
                             netIff.sendNotification("New video [${netIff.cameraPose}]", fn)
-                            uploadVideo(localFiles.find { it.name == fn }!!)
+                            thread { uploadVideo(localFiles.find { it.name == fn }!!) }
                         }, 2000)
 
                         break
@@ -501,26 +520,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateRecordingState() {
-        if (recordingVideo) {
-            val sec = (System.currentTimeMillis() - startTimeMs) / 1000
-            val mm = (sec / 60).toString().padStart(2, '0')
-            val ss = (sec % 60).toString().padStart(2, '0')
+        runOnUiThread {
+            if (recordingVideo) {
+                val sec = (System.currentTimeMillis() - startTimeMs) / 1000
+                val mm = (sec / 60).toString().padStart(2, '0')
+                val ss = (sec % 60).toString().padStart(2, '0')
 
-            chipRecStatus.text = getString(R.string.rec_status_recording, "$mm:$ss")
-            chipRecStatus.setChipIconResource(R.drawable.ic_baseline_radio_button_checked_24)
-        } else {
-            chipRecStatus.setText(R.string.rec_status_ready)
-            chipRecStatus.setChipIconResource(R.drawable.ic_baseline_check_24)
+                chipRecStatus.text = getString(R.string.rec_status_recording, "$mm:$ss")
+                chipRecStatus.setChipIconResource(R.drawable.ic_baseline_radio_button_checked_24)
+            } else {
+                chipRecStatus.setText(R.string.rec_status_ready)
+                chipRecStatus.setChipIconResource(R.drawable.ic_baseline_check_24)
+            }
         }
     }
 
     private fun updateConnectionState() {
-        if (netIff.getConnectionStatus()!!) {
-            chipConnStatus.setText(R.string.conn_status_connected)
-            chipConnStatus.setChipIconResource(R.drawable.ic_baseline_link_24)
-        } else {
-            chipConnStatus.setText(R.string.conn_status_disconnected)
-            chipConnStatus.setChipIconResource(R.drawable.ic_baseline_link_off_24)
+        runOnUiThread {
+            if (netIff.getConnectionStatus()!!) {
+                chipConnStatus.setText(R.string.conn_status_connected)
+                chipConnStatus.setChipIconResource(R.drawable.ic_baseline_link_24)
+            } else {
+                chipConnStatus.setText(R.string.conn_status_disconnected)
+                chipConnStatus.setChipIconResource(R.drawable.ic_baseline_link_off_24)
+            }
         }
     }
 
@@ -572,8 +595,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
+    override fun onDestroy() {
+        super.onDestroy()
+        // Останавливаем HandlerThread при уничтожении активности
+        statusHandlerThread.quitSafely()
+    }
     // end camera2
-
 }
-
