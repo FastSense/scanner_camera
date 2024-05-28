@@ -144,9 +144,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setScreenBrightness(b: Float) {
-        val lp = window.attributes
-        lp.screenBrightness = b
-        window.attributes = lp
+        runOnUiThread {
+            val lp = window.attributes
+            lp.screenBrightness = b
+            window.attributes = lp
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -300,7 +302,7 @@ class MainActivity : AppCompatActivity() {
 
                     val cameraState: String = if (recordingVideo) "recording" else "ready"
 
-                    if (System.currentTimeMillis() -  prevStatusTs > 90) {
+                    if (System.currentTimeMillis() - prevStatusTs > 90) {
                         val statusStartTime = System.currentTimeMillis()
                         netIff.sendStatus(
                             cameraState,
@@ -339,12 +341,20 @@ class MainActivity : AppCompatActivity() {
 
                         else -> {}
                     }
+
+                    // Логика изменения яркости экрана
+                    if (System.currentTimeMillis() - lastTapMs > 30_000 && cardSettings.visibility != View.VISIBLE) {
+                        setScreenBrightness(SCREEN_BRIGHTNESS_LOW)
+                    } else {
+                        setScreenBrightness(SCREEN_BRIGHTNESS_MEDIUM)
+                    }
                 }
                 // Повторяем задачу через 10 миллисекунд
                 statusHandler.postDelayed(this, 10)
             }
         })
     }
+
 
     private fun getBatteryStatus(): Map<String, Any> {
         val b: Intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))!!
